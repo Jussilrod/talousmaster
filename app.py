@@ -101,7 +101,7 @@ def analysoi_talous(df, profiili):
     financial_framework = """
     VIITEKEHYS ANALYYSIIN (70/20/10 -sääntö):
     - Välttämättömät (70%): Asuminen, ruoka, sähkö, vakuutukset, lainat.
-    - Haluat/Elämäntyyli (20%): Harrastukset, ulkona syöminen, viihde.
+    - Elämäntyyli (20%): Harrastukset, ulkona syöminen, viihde.
     - Säästöt (10%): Sijoitukset, puskuri.
     """
 
@@ -261,4 +261,5 @@ if uploaded_file:
         st.warning("⚠️ Excel näyttää tyhjältä.")
 
 else:
+
     st.info("👆 Lataa Excel yläpuolelta nähdäksesi analyysin.")

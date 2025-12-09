@@ -7,7 +7,7 @@ from datetime import datetime
 
 # --- ASETUKSET ---
 # ❗ Laita API-avain tähän
-GOOGLE_API_KEY = "AIzaSyAntKErnXvsS8WMvqFHGkmn9RZTWPfrSgM"
+GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
 
 # Sivun konfiguraatio
 st.set_page_config(

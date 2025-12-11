@@ -70,7 +70,7 @@ with col_left:
 # --- OIKEA PUOLI (VIDEO) ---
 with col_right:
     st.markdown('<p class="video-title">📽️ Näin Taskuekonomisti toimii</p>', unsafe_allow_html=True)
-    st.video("https://videos.pexels.com/video-files/3129671/3129671-hd_1920_1080_30fps.mp4")
+    st.video("assets/esittely.mp4")
     st.caption("Lataa Excel, määritä profiili ja anna tekoälyn etsiä säästökohteet.")
 
 st.write("---")
@@ -118,6 +118,7 @@ if uploaded_file:
                 """, unsafe_allow_html=True)
     else:
         st.error("Virhe: Excelistä ei löytynyt dataa tai rakenne on väärä.")
+
 
 
 

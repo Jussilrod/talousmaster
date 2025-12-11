@@ -1,41 +1,40 @@
+/* --- YLEISET --- */
 .stApp {
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-    }
+    /* Moderni, erittäin vaalea siniharmaa tausta */
+    background: linear-gradient(180deg, #f8fafc 0%, #eff6ff 100%);
+    font-family: 'Segoe UI', 'Roboto', Helvetica, Arial, sans-serif;
+}
 
-/* OTSIKOT */
+/* --- OTSIKOT --- */
 .main-title {
-    font-size: 3.5rem;
+    font-size: 4rem; /* Hieman isompi */
     font-weight: 800;
-    color: #000000;
+    color: #0f172a; /* Melkein musta, mutta pehmeämpi */
     margin-bottom: 0px;
     line-height: 1.1;
-}
-.highlight-blue {
-    color: #2563eb;
-}
-.slogan {
-    font-size: 1.8rem;
-    font-weight: 500;
-    color: #4b5563;
-    margin-top: 10px;
-    margin-bottom: 40px;
+    letter-spacing: -0.02em; /* Tiivimpi väli kirjaimissa */
 }
 
-/* Videon otsikko */
-.video-title {
+/* Tämä luokka tekee tekstistä sinisen */
+.highlight-blue {
+    color: #2563eb; /* Kirkas "Royal Blue" */
+    background: -webkit-linear-gradient(45deg, #2563eb, #3b82f6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent; /* Tekee tekstistä liukuvärjätyn */
+}
+
+.slogan {
     font-size: 1.5rem;
+    font-weight: 400;
+    color: #64748b; /* Harmaa */
+    margin-top: 10px;
+    margin-bottom: 50px;
+}
+
+/* --- VIDEON OTSIKKO --- */
+.video-title {
+    font-size: 1.4rem;
     font-weight: 700;
     color: #1e293b;
-    margin-bottom: 15px;
-}
-
-/* Piilota header */
-header {visibility: hidden;}
-
-/* Painikkeet */
-.stButton>button {
-    border-radius: 8px;
-    height: 45px;
-    font-weight: bold;
-
-}
+    margin-bottom: 20px;
+    border-left: 5px solid #25

@@ -1,0 +1,40 @@
+.stApp {
+    background-color: #ffffff;
+}
+
+/* OTSIKOT */
+.main-title {
+    font-size: 3.5rem;
+    font-weight: 800;
+    color: #000000;
+    margin-bottom: 0px;
+    line-height: 1.1;
+}
+.highlight-blue {
+    color: #2563eb;
+}
+.slogan {
+    font-size: 1.8rem;
+    font-weight: 500;
+    color: #4b5563;
+    margin-top: 10px;
+    margin-bottom: 40px;
+}
+
+/* Videon otsikko */
+.video-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 15px;
+}
+
+/* Piilota header */
+header {visibility: hidden;}
+
+/* Painikkeet */
+.stButton>button {
+    border-radius: 8px;
+    height: 45px;
+    font-weight: bold;
+}

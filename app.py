@@ -71,14 +71,15 @@ with col_left:
 with col_right:
     st.markdown('<p class="video-title">📽️ Näin Taskuekonomisti toimii</p>', unsafe_allow_html=True)
     
-    # Määritellään polku
+    # Tarkistetaan, löytyykö video assets-kansiosta
     video_path = "esittely.mp4"
-            
-        # Näytetään video. start_time=0 varmistaa että se alkaa alusta.
-        st.video(video_path, format="video/mp4", autoplay=True, muted=True, start_time=0)
+    
+    if os.path.exists(video_path):
+        # autoplay=True vaatii yleensä muted=True toimiakseen selaimissa
+        st.video(video_path, autoplay=True, muted=True)
     else:
-        
-        # Fallback-video netistä, jotta sivu ei näytä tyhjältä
+        # Fallback: Jos omaa videota ei löydy, näytetään verkkovideo
+        st.warning(f"Videota ei löytynyt polusta: {video_path}")
         st.video("https://videos.pexels.com/video-files/3129671/3129671-hd_1920_1080_30fps.mp4", autoplay=True, muted=True)
     
     st.caption("Lataa Excel, määritä profiili ja anna tekoälyn etsiä säästökohteet.")
@@ -126,6 +127,7 @@ if uploaded_file:
                 """, unsafe_allow_html=True)
     else:
         st.error("Virhe: Excelistä ei löytynyt dataa tai rakenne on väärä.")
+
 
 
 

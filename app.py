@@ -5,7 +5,7 @@ import os
 # --- ASETUKSET ---
 st.set_page_config(
     page_title="TaskuEkonomisti",
-    page_icon="💸",
+    page_icon="💎",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -28,7 +28,7 @@ logiikka.konfiguroi_ai()
 # 1. OTSIKKO (UUSI NIMI JA EMOJI)
 st.markdown("""
 <div>
-    <h1 class="main-title">Tasku<span class="highlight-blue">Ekonomisti</span> 💸</h1>
+    <h1 class="main-title">Tasku<span class="highlight-blue">Ekonomisti</span> 💎</h1>
     <p class="slogan">Varmista, että rahasi pysyvät taskussa eivätkä lennä muille 💸</p>
 </div>
 """, unsafe_allow_html=True)
@@ -138,6 +138,7 @@ if uploaded_file:
                 """, unsafe_allow_html=True)
     else:
         st.error("Virhe: Excelistä ei löytynyt dataa tai rakenne on väärä.")
+
 
 
 

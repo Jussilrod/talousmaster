@@ -77,8 +77,6 @@ with col_right:
         # Näytetään video. start_time=0 varmistaa että se alkaa alusta.
         st.video(video_path, format="video/mp4", autoplay=True, muted=True, start_time=0)
     else:
-        st.error(f"VIRHE: Tiedostoa ei löydy polusta: {os.path.abspath(video_path)}")
-        st.info("Varmista, että kansio on 'assets' ja tiedosto 'esittely.mp4'")
         
         # Fallback-video netistä, jotta sivu ei näytä tyhjältä
         st.video("https://videos.pexels.com/video-files/3129671/3129671-hd_1920_1080_30fps.mp4", autoplay=True, muted=True)
@@ -128,6 +126,7 @@ if uploaded_file:
                 """, unsafe_allow_html=True)
     else:
         st.error("Virhe: Excelistä ei löytynyt dataa tai rakenne on väärä.")
+
 
 
 

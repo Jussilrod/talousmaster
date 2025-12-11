@@ -179,42 +179,34 @@ col_left, col_right = st.columns([1, 1.2], gap="large")
 
 # --- VASEN PUOLI (TOIMINNOT) ---
 with col_left:
-    # Aloitetaan kortti
-    st.markdown('<div class="action-card">', unsafe_allow_html=True)
-    
-    st.subheader("Aloita analyysi")
-    
-    # 1. Lataus (Tärkein ylhäällä)
-    uploaded_file = st.file_uploader("Lataa täytetty Excel-tiedosto", type=['xlsx'])
-    
-    st.write("") # Tyhjää tilaa
-    
-    # 2. Pohjan lataus
-    st.write("Puuttuuko tiedosto?")
-    try:
-        with open(EXCEL_TEMPLATE_NAME, "rb") as file:
-            st.download_button(
-                label="📥 Lataa tyhjä Excel-pohja",
-                data=file,
-                file_name="talous_tyokalu.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True
-            )
-    except:
-        st.warning("Pohjatiedostoa ei löytynyt.")
+    # Käytetään Streamlitin omaa raamia (border=True), jolloin ei tule "haamu-laatikoita"
+    with st.container(border=True):
+        st.subheader("Aloita analyysi")
         
-    st.markdown("---")
-
-    # 3. Tietoturva (Alhaalla)
-    st.markdown("""
-    <div class="security-box">
-        <b>🔒 Tietoturva:</b><br>
-        Älä laita Exceliin nimiä tai tilinumeroita. Data käsitellään anonyymisti.
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Suljetaan kortti
-    st.markdown('</div>', unsafe_allow_html=True)
+        # 1. Excel-pohjan lataus (Nyt ylhäällä, mutta siististi "Expanderin" sisällä)
+        # Tämä säästää tilaa ja on loogista: jos sinulla ei ole tiedostoa, avaat tämän.
+        with st.expander("Puuttuuko tiedosto? Lataa pohja tästä"):
+            st.write("Lataa tämä pohja, täytä tiedot ja tallenna koneellesi.")
+            try:
+                with open(EXCEL_TEMPLATE_NAME, "rb") as file:
+                    st.download_button(
+                        label="📥 Lataa Excel-työkalu",
+                        data=file,
+                        file_name="talous_tyokalu.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        use_container_width=True
+                    )
+            except:
+                st.warning("Pohjatiedostoa ei löytynyt.")
+        
+        st.write("") # Pieni väli
+        
+        # 2. Latauslaatikko (Päätoiminto keskellä)
+        uploaded_file = st.file_uploader("Lataa täytetty Excel-tiedosto", type=['xlsx'])
+        
+        # 3. Tietoturva (Selkeästi erotettuna alhaalla laatikon sisällä)
+        st.write("")
+        st.info("🔒 **Tietoturva:** Älä syötä Exceliin nimeäsi tai tilinumeroita. Data käsitellään anonyymisti.")
 
 # --- OIKEA PUOLI (VIDEO) ---
 with col_right:
@@ -273,3 +265,4 @@ if uploaded_file:
                 """, unsafe_allow_html=True)
     else:
         st.error("Virhe: Excelistä ei löytynyt dataa.")
+

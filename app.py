@@ -4,8 +4,8 @@ import os
 
 # --- ASETUKSET ---
 st.set_page_config(
-    page_title="TalousMaster AI",
-    page_icon="💎",
+    page_title="Taskuekonomisti",
+    page_icon="💸",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -20,15 +20,15 @@ def local_css(file_name):
 
 local_css("style.css")
 
-# Alustetaan tekoäly (Tämä korjaa sen AttributeError-virheen, jos logiikka.py on kunnossa)
+# Alustetaan tekoäly
 logiikka.konfiguroi_ai()
 
 # --- UI RAKENNE ---
 
-# 1. OTSIKKO
+# 1. OTSIKKO (UUSI NIMI JA EMOJI)
 st.markdown("""
 <div>
-    <h1 class="main-title">TalousMaster <span class="highlight-blue">AI</span></h1>
+    <h1 class="main-title">Tasku<span class="highlight-blue">ekonomisti</span> 💸</h1>
     <p class="slogan">Ota taloutesi hallintaan datalla.</p>
 </div>
 """, unsafe_allow_html=True)
@@ -40,7 +40,7 @@ col_left, col_right = st.columns([1, 1], gap="large")
 with col_left:
     with st.container(border=True):
         
-        # --- OSA 1: PUUTTUUKO POHJA? (NYT YLHÄÄLLÄ) ---
+        # --- OSA 1: PUUTTUUKO POHJA? ---
         st.subheader("1. Puuttuuko pohja?")
         st.write("Lataa valmis pohja tästä, täytä se tiedoillasi ja tallenna.")
         
@@ -58,7 +58,7 @@ with col_left:
 
         st.markdown("---") # Erotinviiva
         
-        # --- OSA 2: LATAA TIEDOSTO (NYT ALHAALLA) ---
+        # --- OSA 2: LATAA TIEDOSTO ---
         st.subheader("2. Lataa tiedosto")
         st.write("Kun Excel on täytetty, pudota se tähän.")
         
@@ -69,7 +69,7 @@ with col_left:
 
 # --- OIKEA PUOLI (VIDEO) ---
 with col_right:
-    st.markdown('<p class="video-title">📽️ Näin TalousMaster toimii</p>', unsafe_allow_html=True)
+    st.markdown('<p class="video-title">📽️ Näin Taskuekonomisti toimii</p>', unsafe_allow_html=True)
     st.video("https://videos.pexels.com/video-files/3129671/3129671-hd_1920_1080_30fps.mp4")
     st.caption("Lataa Excel, määritä profiili ja anna tekoälyn etsiä säästökohteet.")
 
@@ -104,7 +104,7 @@ if uploaded_file:
         analyze_btn = st.button("✨ LUO ANALYYSI", type="primary", use_container_width=True)
 
         if analyze_btn:
-            with st.spinner('Tekoäly varainhoitaja työskentelee...'):
+            with st.spinner('Taskuekonomisti laskee suosituksia...'):
                 profiili = {"ika": ika, "suhde": suhde, "lapset": lapset}
                 
                 vastaus, lopullinen_jaama = logiikka.analysoi_talous(df_laskettu, profiili, data_tyyppi)

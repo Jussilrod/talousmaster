@@ -15,52 +15,57 @@ st.set_page_config(
 # --- TYYLIT (CSS) ---
 st.markdown("""
 <style>
-    /* Yleinen tausta: Kevyt vaalea */
     .stApp {
         background-color: #ffffff;
     }
     
-    /* PÄÄOTSIKKO */
+    /* OTSIKOT */
     .main-title {
         font-size: 3.5rem;
         font-weight: 800;
-        color: #000000; /* Musta */
+        color: #000000;
         margin-bottom: 0px;
         line-height: 1.1;
     }
     .highlight-blue {
-        color: #2563eb; /* Kirkas AI-sininen */
+        color: #2563eb;
     }
-    
-    /* SLOGAN */
     .slogan {
         font-size: 1.8rem;
         font-weight: 500;
-        color: #4b5563; /* Tummanharmaa */
+        color: #4b5563;
         margin-top: 10px;
-        margin-bottom: 30px;
+        margin-bottom: 40px;
     }
     
-    /* UPLOAD-LAATIKKO (VASEN) */
+    /* VASEN LAATIKKO (Action Card) */
     .action-card {
         background-color: #f8fafc;
-        padding: 30px;
+        padding: 25px;
         border-radius: 15px;
         border: 1px solid #e2e8f0;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     }
     
-    /* VAROITUSLAATIKKO */
+    /* TIETOTURVALAATIKKO */
     .security-box {
-        background-color: #fff1f2; /* Vaalea punainen tausta */
-        border-left: 5px solid #e11d48;
-        padding: 15px;
-        margin-bottom: 20px;
-        border-radius: 5px;
+        background-color: #fff1f2;
+        border-left: 4px solid #e11d48;
+        padding: 10px;
+        margin-top: 15px;
+        border-radius: 4px;
         color: #be123c;
-        font-size: 0.9rem;
+        font-size: 0.85rem;
     }
     
+    /* Videon otsikko */
+    .video-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 15px;
+    }
+
     /* Piilota header */
     header {visibility: hidden;}
     
@@ -85,7 +90,7 @@ except Exception as e:
 LOG_FILE = "talousdata_logi.csv"
 EXCEL_TEMPLATE_NAME = "talous_pohja.xlsx" 
 
-# --- FUNKTIOT (Säilytetty ennallaan) ---
+# --- FUNKTIOT (Sama logiikka) ---
 @st.cache_data
 def lue_kaksiosainen_excel(file):
     try:
@@ -161,7 +166,7 @@ def tallenna_lokiiin(profiili, jaama, tyyppi):
 
 # --- KÄYTTÖLIITTYMÄ ---
 
-# 1. OTSIKKO-OSIO
+# 1. OTSIKKO
 st.markdown("""
 <div>
     <h1 class="main-title">TalousMaster <span class="highlight-blue">AI</span></h1>
@@ -169,34 +174,27 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# 2. PÄÄOSIO (SPLIT LAYOUT)
-col_left, col_right = st.columns([1, 1.2]) # Vasen hieman kapeampi
+# 2. PÄÄOSIO (SPLIT)
+col_left, col_right = st.columns([1, 1.2], gap="large")
 
-# --- VASEN PUOLI: TOIMINNOT ---
+# --- VASEN PUOLI (TOIMINNOT) ---
 with col_left:
+    # Aloitetaan kortti
     st.markdown('<div class="action-card">', unsafe_allow_html=True)
+    
     st.subheader("Aloita analyysi")
     
-    # Tietoturva-laatikko (HTML)
-    st.markdown("""
-    <div class="security-box">
-        <b>🔒 Tärkeä tietoturvavaroitus:</b><br>
-        Emme tallenna henkilötietojasi. 
-        <b>Älä sisällytä Exceliin nimiä, henkilötunnuksia tai pankkitilinumeroita.</b> 
-        Tekoäly tarvitsee vain luvut ja kategoriat.
-    </div>
-    """, unsafe_allow_html=True)
+    # 1. Lataus (Tärkein ylhäällä)
+    uploaded_file = st.file_uploader("Lataa täytetty Excel-tiedosto", type=['xlsx'])
     
-    uploaded_file = st.file_uploader("Lataa Excel-tiedosto", type=['xlsx'])
+    st.write("") # Tyhjää tilaa
     
-    st.write("")
-    st.markdown("---")
-    
-    # Lataa pohja -nappi
+    # 2. Pohjan lataus
+    st.write("Puuttuuko tiedosto?")
     try:
         with open(EXCEL_TEMPLATE_NAME, "rb") as file:
             st.download_button(
-                label="📥 Lataa tyhjä pohja (Excel)",
+                label="📥 Lataa tyhjä Excel-pohja",
                 data=file,
                 file_name="talous_tyokalu.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -205,22 +203,33 @@ with col_left:
     except:
         st.warning("Pohjatiedostoa ei löytynyt.")
         
+    st.markdown("---")
+
+    # 3. Tietoturva (Alhaalla)
+    st.markdown("""
+    <div class="security-box">
+        <b>🔒 Tietoturva:</b><br>
+        Älä laita Exceliin nimiä tai tilinumeroita. Data käsitellään anonyymisti.
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Suljetaan kortti
     st.markdown('</div>', unsafe_allow_html=True)
 
-# --- OIKEA PUOLI: MEDIA (VIDEO) ---
+# --- OIKEA PUOLI (VIDEO) ---
 with col_right:
-    # ❗ VINKKI: Jos haluat käyttää omaa videota koneeltasi:
-    # 1. Tallenna video projektikansioon (esim. 'promo.mp4')
-    # 2. Vaihda alla oleva rivi muotoon: st.video("promo.mp4")
+    # Otsikko videon päällä
+    st.markdown('<p class="video-title">📽️ Näin TalousMaster toimii</p>', unsafe_allow_html=True)
     
-    # Nyt käytetään placeholder-videota netistä demoamista varten:
-    st.video("https://www.w3schools.com/html/mov_bbb.mp4", format="video/mp4", start_time=0)
+    # Talousaiheinen video (Pexels, vapaa käyttöoikeus)
+    # Tämä video kuvaa työskentelyä läppärillä/datan parissa
+    st.video("https://videos.pexels.com/video-files/3129671/3129671-hd_1920_1080_30fps.mp4")
     
-    st.caption("Näin TalousMaster toimii: Lataa, Analysoi, Optimoi.")
+    st.caption("Lataa Excel, määritä profiili ja anna tekoälyn etsiä säästökohteet.")
 
 st.write("---")
 
-# 3. TULOS-OSIO (NÄKYY VAIN KUN TIEDOSTO LADATTU)
+# 3. TULOS-OSIO
 if uploaded_file:
     df_laskettu = lue_kaksiosainen_excel(uploaded_file)
     

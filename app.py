@@ -1,5 +1,5 @@
 import streamlit as st
-import logiikka  # Tuodaan meidän oma logiikka-moduuli
+import logiikka  # Varmista, että logiikka.py on samassa kansiossa
 import os
 
 # --- ASETUKSET ---
@@ -12,19 +12,18 @@ st.set_page_config(
 
 EXCEL_TEMPLATE_NAME = "talous_pohja.xlsx"
 
-# --- LADATAAN CSS TYYLIT ---
+# --- TYYLIT ---
 def local_css(file_name):
-    with open(file_name) as f:
-        st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+    if os.path.exists(file_name):
+        with open(file_name) as f:
+            st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
 
-# Ladataan style.css, jos se on olemassa
-if os.path.exists("style.css"):
-    local_css("style.css")
+local_css("style.css")
 
-# Alustetaan tekoäly
+# Alustetaan tekoäly (Tämä korjaa sen AttributeError-virheen, jos logiikka.py on kunnossa)
 logiikka.konfiguroi_ai()
 
-# --- KÄYTTÖLIITTYMÄ (UI) ---
+# --- UI RAKENNE ---
 
 # 1. OTSIKKO
 st.markdown("""
@@ -40,27 +39,30 @@ col_left, col_right = st.columns([1, 1], gap="large")
 # --- VASEN PUOLI (TOIMINNOT) ---
 with col_left:
     with st.container(border=True):
-        st.subheader("1. Lataa tiedosto")
-        uploaded_file = st.file_uploader("Pudota täytetty Excel tähän", type=['xlsx'])
         
-        st.write("") 
-        st.markdown("---")
-        st.write("") 
-
-        st.subheader("2. Puuttuuko pohja?")
-        st.write("Lataa valmis pohja, täytä se ja palauta yllä olevaan laatikkoon.")
+        # --- OSA 1: PUUTTUUKO POHJA? (NYT YLHÄÄLLÄ) ---
+        st.subheader("1. Puuttuuko pohja?")
+        st.write("Lataa valmis pohja tästä, täytä se tiedoillasi ja tallenna.")
         
         try:
             with open(EXCEL_TEMPLATE_NAME, "rb") as file:
                 st.download_button(
-                    label="📥 Lataa Excel-työkalu",
+                    label="📥 Lataa tyhjä Excel-pohja",
                     data=file,
                     file_name="talous_tyokalu.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     use_container_width=True
                 )
         except:
-            st.warning("Pohjatiedostoa ei löytynyt.")
+            st.warning("⚠️ Pohjatiedostoa (talous_pohja.xlsx) ei löytynyt kansiosta.")
+
+        st.markdown("---") # Erotinviiva
+        
+        # --- OSA 2: LATAA TIEDOSTO (NYT ALHAALLA) ---
+        st.subheader("2. Lataa tiedosto")
+        st.write("Kun Excel on täytetty, pudota se tähän.")
+        
+        uploaded_file = st.file_uploader("Pudota täytetty Excel tähän", type=['xlsx'], label_visibility="collapsed")
 
         st.write("")
         st.info("🔒 **Tietoturva:** Älä syötä Exceliin nimeäsi tai tilinumeroita. Data käsitellään anonyymisti.")
@@ -75,7 +77,7 @@ st.write("---")
 
 # 3. TULOS-OSIO
 if uploaded_file:
-    # Kutsutaan funktiota logiikka-tiedostosta
+    # Logiikka haetaan toisesta tiedostosta
     df_laskettu = logiikka.lue_kaksiosainen_excel(uploaded_file)
     
     if not df_laskettu.empty:
@@ -105,7 +107,6 @@ if uploaded_file:
             with st.spinner('Tekoäly varainhoitaja työskentelee...'):
                 profiili = {"ika": ika, "suhde": suhde, "lapset": lapset}
                 
-                # Kutsutaan funktiota logiikka-tiedostosta
                 vastaus, lopullinen_jaama = logiikka.analysoi_talous(df_laskettu, profiili, data_tyyppi)
                 logiikka.tallenna_lokiiin(profiili, lopullinen_jaama, data_tyyppi)
                 
@@ -116,4 +117,4 @@ if uploaded_file:
                 </div>
                 """, unsafe_allow_html=True)
     else:
-        st.error("Virhe: Excelistä ei löytynyt dataa.")
+        st.error("Virhe: Excelistä ei löytynyt dataa tai rakenne on väärä.")

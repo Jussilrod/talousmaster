@@ -72,7 +72,7 @@ with col_right:
     st.markdown('<p class="video-title">📽️ Näin Taskuekonomisti toimii</p>', unsafe_allow_html=True)
     
     # Määritellään polku
-    video_path = "assets/esittely.mp4"
+    video_path = "esittely.mp4"
     
     # DEBUG-TIETO: Tulostaa ruudulle True tai False
     if os.path.exists(video_path):
@@ -132,6 +132,7 @@ if uploaded_file:
                 """, unsafe_allow_html=True)
     else:
         st.error("Virhe: Excelistä ei löytynyt dataa tai rakenne on väärä.")
+
 
 
 

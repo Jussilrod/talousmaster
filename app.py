@@ -82,7 +82,16 @@ with col_right:
         st.warning(f"Videota ei löytynyt polusta: {video_path}")
         st.video("https://videos.pexels.com/video-files/3129671/3129671-hd_1920_1080_30fps.mp4", autoplay=True, muted=True)
     
-    st.caption("Lataa Excel, määritä profiili ja anna tekoälyn etsiä säästökohteet.")
+    st.markdown("""
+    <div style="
+        font-size: 1.2rem; 
+        font-weight: 600; 
+        color: #334155; 
+        margin-top: 15px; 
+        line-height: 1.4;">
+        🚀 Lataa Excel, määritä profiili ja anna tekoälyn etsiä säästökohteet.
+    </div>
+    """, unsafe_allow_html=True)
 
 # 3. TULOS-OSIO
 if uploaded_file:
@@ -127,6 +136,7 @@ if uploaded_file:
                 """, unsafe_allow_html=True)
     else:
         st.error("Virhe: Excelistä ei löytynyt dataa tai rakenne on väärä.")
+
 
 
 

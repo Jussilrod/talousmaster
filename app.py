@@ -38,26 +38,6 @@ st.markdown("""
         margin-bottom: 40px;
     }
     
-    /* VASEN LAATIKKO (Action Card) */
-    .action-card {
-        background-color: #f8fafc;
-        padding: 25px;
-        border-radius: 15px;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    }
-    
-    /* TIETOTURVALAATIKKO */
-    .security-box {
-        background-color: #fff1f2;
-        border-left: 4px solid #e11d48;
-        padding: 10px;
-        margin-top: 15px;
-        border-radius: 4px;
-        color: #be123c;
-        font-size: 0.85rem;
-    }
-    
     /* Videon otsikko */
     .video-title {
         font-size: 1.5rem;
@@ -90,7 +70,7 @@ except Exception as e:
 LOG_FILE = "talousdata_logi.csv"
 EXCEL_TEMPLATE_NAME = "talous_pohja.xlsx" 
 
-# --- FUNKTIOT (Sama logiikka) ---
+# --- FUNKTIOT ---
 @st.cache_data
 def lue_kaksiosainen_excel(file):
     try:
@@ -175,37 +155,42 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # 2. PÄÄOSIO (SPLIT)
-col_left, col_right = st.columns([1, 1.2], gap="large")
+# Tässä määritellään sarakkeiden suhde. [1, 1] tarkoittaa yhtä suuria.
+col_left, col_right = st.columns([1, 1], gap="large")
 
 # --- VASEN PUOLI (TOIMINNOT) ---
 with col_left:
-    # Käytetään Streamlitin omaa raamia (border=True), jolloin ei tule "haamu-laatikoita"
+    # Käytetään Streamlitin aitoa reunusta -> Ei haamu-ongelmia
     with st.container(border=True):
-        st.subheader("Aloita analyysi")
+        st.subheader("1. Lataa tiedosto")
         
-        # 1. Excel-pohjan lataus (Nyt ylhäällä, mutta siististi "Expanderin" sisällä)
-        # Tämä säästää tilaa ja on loogista: jos sinulla ei ole tiedostoa, avaat tämän.
-        with st.expander("Puuttuuko tiedosto? Lataa pohja tästä"):
-            st.write("Lataa tämä pohja, täytä tiedot ja tallenna koneellesi.")
-            try:
-                with open(EXCEL_TEMPLATE_NAME, "rb") as file:
-                    st.download_button(
-                        label="📥 Lataa Excel-työkalu",
-                        data=file,
-                        file_name="talous_tyokalu.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        use_container_width=True
-                    )
-            except:
-                st.warning("Pohjatiedostoa ei löytynyt.")
+        # Päätoiminto: Lataus
+        uploaded_file = st.file_uploader("Pudota täytetty Excel tähän", type=['xlsx'])
         
-        st.write("") # Pieni väli
+        st.write("") 
+        st.markdown("---") # Erotinviiva
+        st.write("") 
+
+        # Toissijainen toiminto: Pohjan lataus (Suoraan näkyvillä)
+        st.subheader("2. Puuttuuko pohja?")
+        st.write("Lataa valmis pohja, täytä se ja palauta yllä olevaan laatikkoon.")
         
-        # 2. Latauslaatikko (Päätoiminto keskellä)
-        uploaded_file = st.file_uploader("Lataa täytetty Excel-tiedosto", type=['xlsx'])
-        
-        # 3. Tietoturva (Selkeästi erotettuna alhaalla laatikon sisällä)
+        try:
+            with open(EXCEL_TEMPLATE_NAME, "rb") as file:
+                st.download_button(
+                    label="📥 Lataa Excel-työkalu",
+                    data=file,
+                    file_name="talous_tyokalu.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True
+                )
+        except:
+            st.warning("Pohjatiedostoa ei löytynyt.")
+
         st.write("")
+        st.write("")
+        
+        # Tietoturva
         st.info("🔒 **Tietoturva:** Älä syötä Exceliin nimeäsi tai tilinumeroita. Data käsitellään anonyymisti.")
 
 # --- OIKEA PUOLI (VIDEO) ---
@@ -213,8 +198,7 @@ with col_right:
     # Otsikko videon päällä
     st.markdown('<p class="video-title">📽️ Näin TalousMaster toimii</p>', unsafe_allow_html=True)
     
-    # Talousaiheinen video (Pexels, vapaa käyttöoikeus)
-    # Tämä video kuvaa työskentelyä läppärillä/datan parissa
+    # Video
     st.video("https://videos.pexels.com/video-files/3129671/3129671-hd_1920_1080_30fps.mp4")
     
     st.caption("Lataa Excel, määritä profiili ja anna tekoälyn etsiä säästökohteet.")
@@ -265,4 +249,3 @@ if uploaded_file:
                 """, unsafe_allow_html=True)
     else:
         st.error("Virhe: Excelistä ei löytynyt dataa.")
-

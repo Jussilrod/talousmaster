@@ -36,6 +36,17 @@ st.markdown("""
 # 2. PÄÄOSIO
 col_left, col_right = st.columns([1, 1], gap="large")
 
+st.markdown("""
+    <div style="
+        font-size: 1.2rem; 
+        font-weight: 600; 
+        color: #334155; 
+        margin-top: 15px; 
+        line-height: 1.4;">
+        🚀 Lataa Excel, määritä profiili ja anna tekoälyn etsiä säästökohteet.
+    </div>
+    """, unsafe_allow_html=True)
+
 # --- VASEN PUOLI (TOIMINNOT) ---
 with col_left:
     with st.container(border=True):
@@ -82,16 +93,7 @@ with col_right:
         st.warning(f"Videota ei löytynyt polusta: {video_path}")
         st.video("https://videos.pexels.com/video-files/3129671/3129671-hd_1920_1080_30fps.mp4", autoplay=True, muted=True)
     
-    st.markdown("""
-    <div style="
-        font-size: 1.2rem; 
-        font-weight: 600; 
-        color: #334155; 
-        margin-top: 15px; 
-        line-height: 1.4;">
-        🚀 Lataa Excel, määritä profiili ja anna tekoälyn etsiä säästökohteet.
-    </div>
-    """, unsafe_allow_html=True)
+    
 
 # 3. TULOS-OSIO
 if uploaded_file:
@@ -136,6 +138,7 @@ if uploaded_file:
                 """, unsafe_allow_html=True)
     else:
         st.error("Virhe: Excelistä ei löytynyt dataa tai rakenne on väärä.")
+
 
 
 

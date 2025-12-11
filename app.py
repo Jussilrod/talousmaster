@@ -29,7 +29,7 @@ logiikka.konfiguroi_ai()
 st.markdown("""
 <div>
     <h1 class="main-title">Tasku<span class="highlight-blue">Ekonomisti</span> 💸</h1>
-    <p class="slogan">Varmista, että rahasi pysyvät taskussa eivätkä lennä muille 💸 Ota taloutesi hallintaan datalla.</p>
+    <p class="slogan">Varmista, että rahasi pysyvät taskussa eivätkä lennä muille 💸</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -76,11 +76,11 @@ with col_left:
         uploaded_file = st.file_uploader("Pudota täytetty Excel tähän", type=['xlsx'], label_visibility="collapsed")
 
         st.write("")
-        st.info("🔒 **Tietoturva:** Älä syötä Exceliin nimeäsi tai tilinumeroita. Data käsitellään anonyymisti.")
+        st.info("🔒 **Tietoturva:** Älä syötä Exceliin henkilötietojasi tai tilinumeroita. Data käsitellään anonyymisti.")
 
 # --- OIKEA PUOLI ---
 with col_right:
-    st.markdown('<p class="video-title">📽️ Näin Taskuekonomisti toimii</p>', unsafe_allow_html=True)
+    st.markdown('<p class="video-title">Ota taloutesi hallintaan datalla</p>', unsafe_allow_html=True)
     
     # Tarkistetaan, löytyykö video assets-kansiosta
     video_path = "esittely.mp4"
@@ -138,6 +138,7 @@ if uploaded_file:
                 """, unsafe_allow_html=True)
     else:
         st.error("Virhe: Excelistä ei löytynyt dataa tai rakenne on väärä.")
+
 
 
 

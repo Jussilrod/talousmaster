@@ -1,6 +1,6 @@
 .stApp {
-    background-color: #ffffff;
-}
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    }
 
 /* OTSIKOT */
 .main-title {
@@ -37,4 +37,5 @@ header {visibility: hidden;}
     border-radius: 8px;
     height: 45px;
     font-weight: bold;
+
 }

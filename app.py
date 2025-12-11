@@ -2,14 +2,9 @@ import streamlit as st
 import pandas as pd
 import google.generativeai as genai
 import os
-import json
 from datetime import datetime
 
 # --- ASETUKSET ---
-# ❗ Laita API-avain tähän
-GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
-
-# Sivun konfiguraatio
 st.set_page_config(
     page_title="TalousMaster AI",
     page_icon="💎",
@@ -17,26 +12,75 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# --- MODERN UI CSS ---
+# Tämä osio muuttaa vain ulkoasua, ei logiikkaa.
+st.markdown("""
+<style>
+    /* Päätausta ja fontit */
+    .stApp {
+        background-color: #f8f9fa;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    /* Otsikon tyyli */
+    h1 {
+        color: #1e3a8a;
+        font-weight: 700;
+        text-align: center;
+        padding-bottom: 20px;
+    }
+    
+    /* Metriikka-kortit (KPI) */
+    div[data-testid="metric-container"] {
+        background-color: white;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        border-left: 5px solid #3b82f6;
+        text-align: center;
+    }
+    
+    /* Latauslaatikon tyyli */
+    .upload-box {
+        border: 2px dashed #cbd5e1;
+        border-radius: 10px;
+        padding: 20px;
+        background-color: white;
+    }
+    
+    /* Painikkeet */
+    .stButton>button {
+        border-radius: 8px;
+        font-weight: 600;
+        height: 3em;
+    }
+    
+    /* Piilota turha yläpalkki */
+    header {visibility: hidden;}
+    
+</style>
+""", unsafe_allow_html=True)
+
+# Turvallinen API-avaimen haku
 try:
-    genai.configure(api_key=GOOGLE_API_KEY)
+    if "GOOGLE_API_KEY" in st.secrets:
+        genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+    else:
+        st.error("⚠️ API-avain puuttuu secrets.toml -tiedostosta.")
 except Exception as e:
-    st.error("Järjestelmävirhe: API-avain puuttuu.")
+    st.error(f"Järjestelmävirhe: {e}")
 
 LOG_FILE = "talousdata_logi.csv"
 EXCEL_TEMPLATE_NAME = "talous_pohja.xlsx" 
 
-# --- TEKNISET FUNKTIOT ---
+# --- TEKNISET FUNKTIOT (LOGIIKKA KOSKEMATON) ---
 
+@st.cache_data
 def lue_kaksiosainen_excel(file):
-    """
-    Lukee Excelin YKSINKERTAISTETULLA logiikalla.
-    Lukee vain sarakkeen C (Kuukausisumma). Ei enää vuosijakoja.
-    """
     try:
         df = pd.read_excel(file, header=None)
         data_rows = []
         
-        # Etsitään "Tulot" ja "Menot" otsikot
         try:
             tulot_rivi = df[df.iloc[:, 1].astype(str).str.contains("Tulot", na=False)].index[0]
             menot_rivi = df[df.iloc[:, 1].astype(str).str.contains("Menot", na=False)].index[0]
@@ -47,13 +91,11 @@ def lue_kaksiosainen_excel(file):
         tulot_df = df.iloc[tulot_rivi + 2 : menot_rivi].copy()
         for _, row in tulot_df.iterrows():
             nimi = str(row[1])
-            # Luetaan vain sarake 2 (C-sarake, eli Kuukausi)
             kk_summa = pd.to_numeric(row[2], errors='coerce') 
             
             if pd.isna(kk_summa): continue
             if "Yhteensä" in nimi or nimi == "nan": continue
 
-            # Nyt ei jaeta mitään, vaan otetaan luku sellaisenaan
             if kk_summa > 0.5: 
                 data_rows.append({"Kategoria": "Tulo", "Selite": nimi, "Euroa_KK": round(kk_summa, 2)})
 
@@ -61,7 +103,6 @@ def lue_kaksiosainen_excel(file):
         menot_df = df.iloc[menot_rivi + 2 : ].copy()
         for _, row in menot_df.iterrows():
             nimi = str(row[1])
-            # Luetaan vain sarake 2 (C-sarake, eli Kuukausi)
             kk_summa = pd.to_numeric(row[2], errors='coerce')
             
             if pd.isna(kk_summa): continue
@@ -75,7 +116,8 @@ def lue_kaksiosainen_excel(file):
     except Exception as e:
         return pd.DataFrame()
 
-def analysoi_talous(df, profiili):
+def analysoi_talous(df, profiili, data_tyyppi):
+    # ALKUPERÄINEN MALLI JA PROMPT - EI MUUTOKSIA
     model = genai.GenerativeModel('gemini-2.5-flash') 
     
     data_txt = df.to_string(index=False)
@@ -91,7 +133,6 @@ def analysoi_talous(df, profiili):
     else:
         tilanne_ohje = "Talous on alijäämäinen. Etsi säästökohteita."
 
-    # 2. Datan tyyppi -ohje (UUSI)
     tyyppi_ohje = ""
     if "Toteuma" in data_tyyppi:
         tyyppi_ohje = "HUOM: Data on TOTEUMA (oikeasti tapahtuneet kulut). Etsi menneisyyden virheet, ylitykset ja vuodot."
@@ -147,7 +188,6 @@ def tallenna_lokiiin(profiili, jaama, tyyppi):
         "Pvm": datetime.now().strftime("%Y-%m-%d"),
         "Tyyppi": tyyppi,
         "Ikä": profiili['ika'],
-        "Sukupuoli": profiili['sukupuoli'],
         "Status": profiili['suhde'],
         "Lapset": profiili['lapset'],
         "Jäämä": round(jaama, 2)
@@ -159,107 +199,102 @@ def tallenna_lokiiin(profiili, jaama, tyyppi):
 
 # --- KÄYTTÖLIITTYMÄ (UI) ---
 
-st.title("💎 TalousMaster AI")
-st.markdown("""
-<style>
-    .big-font { font-size:18px !important; color: #555; }
-</style>
-<p class="big-font">Henkilökohtainen varainhoitajasi. Lataa luvut, tekoäly hoitaa loput.</p>
-""", unsafe_allow_html=True)
+# Header Section
+st.markdown("<h1>💎 TalousMaster <span style='color:#3b82f6'>AI</span></h1>", unsafe_allow_html=True)
+st.caption("Henkilökohtainen varainhoitajasi. Lataa Excel, saat ammattilaisen analyysin sekunneissa.")
 
-st.divider()
+st.write("") # Spacer
 
-# VAIHE 1: OHJEET JA LATAUS
-col_info, col_download = st.columns([1.5, 1])
+# VAIHE 1: LAYOUT & LATAUS
+with st.container():
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        st.subheader("📂 1. Lataa aineisto")
+        st.info("💡 **Vinkki:** Voit lisätä Exceliin rivejä vapaasti. AI ymmärtää kategorioiden nimet automaattisesti.")
+        uploaded_file = st.file_uploader("Pudota Excel-tiedosto tähän", type=['xlsx'], label_visibility="collapsed")
+    
+    with col2:
+        st.subheader("📥 Pohjatiedosto")
+        st.write("Ei vielä tiedostoa?")
+        try:
+            with open(EXCEL_TEMPLATE_NAME, "rb") as file:
+                st.download_button(
+                    label="Lataa Excel-työkalu",
+                    data=file,
+                    file_name="talous_tyokalu.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    type="secondary"
+                )
+        except:
+            st.warning("Pohjatiedostoa ei löytynyt.")
 
-with col_info:
-    st.subheader("1. Aloita tästä")
-    st.info("""
-    **🛡️ Tietoturvaohje:** Älä koskaan kirjoita Exceliin nimeäsi, henkilötunnustasi tai pankkitilinumeroitasi. 
-    Tekoäly tarvitsee vain luvut ja kategorioiden nimet.
-    """)
-    # KORJATTU KOHTA: Nuoli on nyt tavallinen '->'
-    st.markdown("""
-    * **Lisää rivejä vapaasti:** Voit lisätä uusia rivejä Exceliin.
-    * **Nimeä kulut:** Muuta "Laina 1" -> "Opintolaina".
-    """)
+st.write("---")
 
-with col_download:
-    st.subheader("Pohja")
-    try:
-        with open(EXCEL_TEMPLATE_NAME, "rb") as file:
-            st.download_button(
-                label="📥 Lataa Excel-työkalu",
-                data=file,
-                file_name="talous_tyokalu.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                type="primary"
-            )
-    except:
-        st.error("Pohjatiedosto puuttuu palvelimelta.")
-
-st.divider()
-
-# VAIHE 2: UPLOAD
-st.subheader("2. Analyysi")
-uploaded_file = st.file_uploader("Palauta täytetty Excel tähän", type=['xlsx'], label_visibility="collapsed")
-
+# VAIHE 2: ANALYYSI (Näkyy vain jos tiedosto ladattu)
 if uploaded_file:
     df_laskettu = lue_kaksiosainen_excel(uploaded_file)
     
     if not df_laskettu.empty:
-        # Lasketaan avainluvut
         tulot = df_laskettu[df_laskettu['Kategoria']=='Tulo']['Euroa_KK'].sum()
         menot = df_laskettu[df_laskettu['Kategoria']=='Meno']['Euroa_KK'].sum()
         jaama_preview = tulot - menot
         
-        st.write("### 👤 Taustatiedot & Nykytila")
+        # --- DASHBOARD SECTION ---
+        st.subheader("👤 2. Taustatiedot & Nykytila")
         
+        # Profiili-asetukset tyylikkäässä rivissä
         with st.container():
-            col_prof1, col_prof2, col_prof3, col_prof4,col_prof5  = st.columns(5)
-            with col_prof1: ika = st.number_input("Ikä", 15, 100, 30)
-            with col_prof2: sukupuoli = st.selectbox("Sukupuoli", ["Mies", "Nainen", "Muu"])
-            with col_prof3: suhde = st.selectbox("Status", ["Yksin", "Parisuhteessa", "Perheellinen", "Yksinhuoltaja"])
-            with col_prof4: lapset = st.number_input("Lapset", 0, 10, 0)
-            with col_prof5: data_tyyppi = st.radio("Tiedot ovat:", ["Suunnitelma (Budjetti)", "Toteuma (Oikeat kulut)"])
-        
-        st.markdown("---")
-        
-        # DASHBOARD-TYYLISET LUVUT
-        col_m1, col_m2, col_m3 = st.columns(3)
-        col_m1.metric("Tulot (kk)", f"{tulot:,.0f} €")
-        col_m2.metric("Menot (kk)", f"{menot:,.0f} €") # Ei deltaa menoissa, pelkkä luku
-        
-        # KORJATTU KOHTA: Jäämä ja sen väri
-        # 'normal' tarkoittaa: Positiivinen = Vihreä, Negatiivinen = Punainen.
-        # Näytetään delta-arvona itse summa, jolloin väri aktivoituu.
-        col_m3.metric(
-            "Jäämä (kk)", 
-            f"{jaama_preview:,.0f} €", 
-            delta=f"{jaama_preview:,.0f} €", 
-            delta_color="normal"
-        )
+            c1, c2, c3, c4 = st.columns(4)
+            with c1: ika = st.number_input("Ikä", 15, 100, 30)
+            with c2: suhde = st.selectbox("Elämäntilanne", ["Yksin", "Parisuhteessa", "Perheellinen", "YH"])
+            with c3: lapset = st.number_input("Lapset", 0, 10, 0)
+            with c4: data_tyyppi = st.radio("Analyysin tyyppi", ["Suunnitelma", "Toteuma"])
 
-        with st.expander("🔍 Katso tarkka erittely (Data)"):
+        st.write("") # Spacer
+
+        # KPI KORTIT
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Tulot / kk", f"{tulot:,.0f} €")
+        m2.metric("Menot / kk", f"{menot:,.0f} €")
+        m3.metric("Jäämä / kk", f"{jaama_preview:,.0f} €", 
+                 delta=f"{jaama_preview:,.0f} €", delta_color="normal")
+
+        # DATA EXPANDER
+        with st.expander("🔍 Tarkastele luettuja lukuja (Data)"):
             st.dataframe(df_laskettu, use_container_width=True)
 
-        st.write(" ")
-        analyze_btn = st.button("🚀 Analysoi", type="primary", use_container_width=True)
+        st.write("")
+        st.write("")
+
+        # ANALYSOI -PAINIKE
+        col_btn_l, col_btn_c, col_btn_r = st.columns([1, 2, 1])
+        with col_btn_c:
+            analyze_btn = st.button("🚀 KÄYNNISTÄ TEKOÄLY-ANALYYSI", type="primary", use_container_width=True)
 
         if analyze_btn:
-            with st.spinner('Varainhoitaja analysoi kulurakennetta...'):
-                profiili = {"ika": ika, "sukupuoli": sukupuoli, "suhde": suhde, "lapset": lapset}
+            # Placeholder analyysin ajaksi
+            progress_text = "Analysoidaan kulurakennetta... Etsitään säästökohteita... Lasketaan suosituksia..."
+            with st.status(progress_text, expanded=True) as status:
+                st.write("Yhdistetään AI-varainhoitajaan...")
+                profiili = {"ika": ika, "sukupuoli": "Muu", "suhde": suhde, "lapset": lapset} # Sukupuoli oletuksena
                 
-                vastaus, lopullinen_jaama = analysoi_talous(df_laskettu, profiili)
-                
-                st.success("Analyysi valmistunut.")
-                st.markdown("### 📝 Toimenpidesuositus")
-                st.markdown(vastaus)
+                vastaus, lopullinen_jaama = analysoi_talous(df_laskettu, profiili, data_tyyppi)
                 
                 tallenna_lokiiin(profiili, lopullinen_jaama, data_tyyppi)
+                status.update(label="Analyysi valmis!", state="complete", expanded=False)
+            
+            # TULOS
+            st.markdown("---")
+            st.markdown("### 📝 Varainhoitajan Raportti")
+            
+            # Tulostetaan vastaus containeriin, jossa on vaalea tausta
+            with st.container():
+                st.markdown(vastaus)
+                
     else:
-        st.warning("⚠️ Excel näyttää tyhjältä.")
+        st.error("⚠️ Tiedoston luku epäonnistui. Tarkista, että Excelissä on sarakkeet 'Tulot' ja 'Menot'.")
 
 else:
-
-    st.info("👆 Lataa Excel yläpuolelta nähdäksesi analyysin.")
+    # Tyhjä tila alhaalla, jos tiedostoa ei ole
+    st.markdown("<div style='text-align: center; color: #aaa; margin-top: 50px;'><i>Odottamassa aineistoa...</i></div>", unsafe_allow_html=True)

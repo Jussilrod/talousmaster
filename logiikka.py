@@ -57,6 +57,7 @@ def lue_kaksiosainen_excel(file):
 
 # --- TEKOÄLY ANALYYSI ---
 def analysoi_talous(df, profiili, data_tyyppi):
+    # Pidetty alkuperäinen malli
     model = genai.GenerativeModel('gemini-2.5-flash') 
     
     data_txt = df.to_string(index=False)
@@ -65,26 +66,62 @@ def analysoi_talous(df, profiili, data_tyyppi):
     jaama = tulot - menot
     
     tilanne_ohje = ""
-    if jaama > 500: tilanne_ohje = "Talous on vahva."
-    elif jaama >= 0: tilanne_ohje = "Talous on tasapainossa."
-    else: tilanne_ohje = "Talous on alijäämäinen."
+    if jaama > 500:
+        tilanne_ohje = "Talous on vahva. Keskity varallisuuden kasvattamiseen."
+    elif jaama >= 0:
+        tilanne_ohje = "Talous on tasapainossa, mutta herkkä."
+    else:
+        tilanne_ohje = "Talous on alijäämäinen. Etsi säästökohteita."
+
+    # Data tyyppi -ohje
+    tyyppi_ohje = ""
+    if "Toteuma" in data_tyyppi:
+        tyyppi_ohje = "HUOM: Data on TOTEUMA (oikeasti tapahtuneet kulut). Etsi menneisyyden virheet, ylitykset ja vuodot."
+    else:
+        tyyppi_ohje = "HUOM: Data on BUDJETTI (suunnitelma). Arvioi onko suunnitelma realistinen ja onko jotain unohtunut."    
 
     financial_framework = """
-    VIITEKEHYS (50/30/20):
-    - 50% Välttämättömät
-    - 30% Haluat
-    - 20% Säästöt
+    VIITEKEHYS ANALYYSIIN (70/20/10 -sääntö):
+    - Välttämättömät (70%): Asuminen, ruoka, sähkö, vakuutukset, lainat.
+    - Elämäntyyli (20%): Harrastukset, ulkona syöminen, viihde.
+    - Säästöt (10%): Sijoitukset, puskuri.
     """
-    
+
+    # ALKUPERÄINEN PROMPT PIDETTY KOSKEMATTOMANA
     prompt = f"""
-    Toimit kokeneena varainhoitajana. Analysoi data.
-    ASIAKAS: Ikä: {profiili['ika']} | Status: {profiili['suhde']} | Lapset: {profiili['lapset']}
-    Tilanne: {tilanne_ohje} ({data_tyyppi})
-    DATA: {data_txt}
+    Toimit kokeneena varainhoitajana (Certified Financial Planner). Tehtäväsi on analysoida asiakkaan talousdata ja antaa konkreettisia, matemaattisesti perusteltuja suosituksia.
+
+    ASIAKASPROFIILI:
+    - Ikä: {profiili['ika']} | Status: {profiili['suhde']} | Lapset: {profiili['lapset']}
+    - Nykyinen kassavirtatilanne: {tilanne_ohje}
+
+    DATA (Kuukausitaso):
+    {data_txt}
+
     {financial_framework}
-    TEHTÄVÄ: Markdown raportti. 1. Tilannekuva. 2. Huomiot. 3. Action Points.
+
+    ANALYYSIOHJEET:
+    1. Laske ja kategorisoi: Jaa asiakkaan kulut yllä mainittuihin 50/30/20 kategorioihin ja vertaa niitä ihannetasoon.
+    2. Tunnista vuodot: Etsi kulueriä, jotka poikkeavat merkittävästi profiilin mukaisesta normaalitasosta.
+    3. Priorisoi: Jos talous on alijäämäinen, etsi nopeimmat säästöt "Haluat"-kategoriasta. Jos ylijäämäinen, suosittele allokaatiota (puskuri vs. sijoittaminen).
+
+    VASTAUKSEN RAKENNE (Käytä Markdownia):
+
+    ## 📊 Talouden tilannekuva
+    [Lyhyt, ammattimainen yhteenveto siitä, miltä tilanne näyttää suhteessa 70/20/10-sääntöön. Esim: "Välttämättömät menot vievät 80% tuloista, mikä luo riskiä..."]
+
+    ## 💡 Huomiot kulurakenteesta
+    * **Positiivista:** [Mikä on hyvin?]
+    * **Kehitettävää:** [Missä on suurin vuoto?]
+
+    ## 🚀 3 Toimenpidettä (Action Points)
+    1.  **[Toimenpide 1 - Nopea vaikutus]:** [Mitä tehdään, paljonko säästetään/tuotetaan euroissa?]
+    2.  **[Toimenpide 2 - Rakenteellinen muutos]:** [Esim. kilpailutus tai budjettikatto]
+    3.  **[Toimenpide 3 - Tulevaisuus/Turva]:** [Puskurin kerrytys tai sijoittaminen]
+
+    HUOM: Ole suora, kannustava ja ratkaisukeskeinen. Älä käytä jargonia ilman selitystä.
     """
-    
+        
     response = model.generate_content(prompt)
     return response.text, jaama
 

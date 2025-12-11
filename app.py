@@ -73,11 +73,7 @@ with col_right:
     
     # Määritellään polku
     video_path = "esittely.mp4"
-    
-    # DEBUG-TIETO: Tulostaa ruudulle True tai False
-    if os.path.exists(video_path):
-        st.success(f"Videotiedosto löytyi! Koko: {os.path.getsize(video_path) / 1000000:.1f} MB")
-        
+            
         # Näytetään video. start_time=0 varmistaa että se alkaa alusta.
         st.video(video_path, format="video/mp4", autoplay=True, muted=True, start_time=0)
     else:
@@ -132,6 +128,7 @@ if uploaded_file:
                 """, unsafe_allow_html=True)
     else:
         st.error("Virhe: Excelistä ei löytynyt dataa tai rakenne on väärä.")
+
 
 
 

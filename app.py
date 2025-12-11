@@ -70,7 +70,16 @@ with col_left:
 # --- OIKEA PUOLI (VIDEO) ---
 with col_right:
     st.markdown('<p class="video-title">📽️ Näin Taskuekonomisti toimii</p>', unsafe_allow_html=True)
-    st.video("assets/esittely.mp4")
+    # Tarkistetaan, löytyykö video assets-kansiosta
+    video_path = "assets/esittely.mp4"
+    
+    if os.path.exists(video_path):
+        # autoplay=True vaatii yleensä muted=True toimiakseen selaimissa
+        st.video(video_path, autoplay=True, muted=True)
+    else:
+        # Fallback: Jos omaa videota ei löydy, näytetään verkkovideo
+        st.warning(f"Videota ei löytynyt polusta: {video_path}")
+        st.video("https://videos.pexels.com/video-files/3129671/3129671-hd_1920_1080_30fps.mp4", autoplay=True, muted=True)
     st.caption("Lataa Excel, määritä profiili ja anna tekoälyn etsiä säästökohteet.")
 
 st.write("---")
@@ -118,6 +127,7 @@ if uploaded_file:
                 """, unsafe_allow_html=True)
     else:
         st.error("Virhe: Excelistä ei löytynyt dataa tai rakenne on väärä.")
+
 
 
 

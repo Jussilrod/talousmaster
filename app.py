@@ -4,7 +4,7 @@ import os
 
 # --- ASETUKSET ---
 st.set_page_config(
-    page_title="Taskuekonomisti",
+    page_title="Tasku€konomisti",
     page_icon="💸",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -118,4 +118,5 @@ if uploaded_file:
                 """, unsafe_allow_html=True)
     else:
         st.error("Virhe: Excelistä ei löytynyt dataa tai rakenne on väärä.")
+
 

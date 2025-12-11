@@ -160,9 +160,13 @@ col_left, col_right = st.columns([1, 1], gap="large")
 
 # --- VASEN PUOLI (TOIMINNOT) ---
 with col_left:
+    # Toissijainen toiminto: Pohjan lataus (Suoraan näkyvillä)
+        st.subheader("1. Puuttuuko pohja?")
+        st.write("Lataa valmis pohja, täytä se ja palauta alla olevaan laatikkoon.")
+    
     # Käytetään Streamlitin aitoa reunusta -> Ei haamu-ongelmia
     with st.container(border=True):
-        st.subheader("1. Lataa tiedosto")
+        st.subheader("2. Lataa tiedosto")
         
         # Päätoiminto: Lataus
         uploaded_file = st.file_uploader("Pudota täytetty Excel tähän", type=['xlsx'])
@@ -170,10 +174,6 @@ with col_left:
         st.write("") 
         st.markdown("---") # Erotinviiva
         st.write("") 
-
-        # Toissijainen toiminto: Pohjan lataus (Suoraan näkyvillä)
-        st.subheader("2. Puuttuuko pohja?")
-        st.write("Lataa valmis pohja, täytä se ja palauta yllä olevaan laatikkoon.")
         
         try:
             with open(EXCEL_TEMPLATE_NAME, "rb") as file:

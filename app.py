@@ -67,22 +67,27 @@ with col_left:
         st.write("")
         st.info("🔒 **Tietoturva:** Älä syötä Exceliin nimeäsi tai tilinumeroita. Data käsitellään anonyymisti.")
 
-# --- OIKEA PUOLI (VIDEO) ---
+# --- OIKEA PUOLI ---
 with col_right:
     st.markdown('<p class="video-title">📽️ Näin Taskuekonomisti toimii</p>', unsafe_allow_html=True)
-    # Tarkistetaan, löytyykö video assets-kansiosta
+    
+    # Määritellään polku
     video_path = "assets/esittely.mp4"
     
+    # DEBUG-TIETO: Tulostaa ruudulle True tai False
     if os.path.exists(video_path):
-        # autoplay=True vaatii yleensä muted=True toimiakseen selaimissa
-        st.video(video_path, autoplay=True, muted=True)
+        st.success(f"Videotiedosto löytyi! Koko: {os.path.getsize(video_path) / 1000000:.1f} MB")
+        
+        # Näytetään video. start_time=0 varmistaa että se alkaa alusta.
+        st.video(video_path, format="video/mp4", autoplay=True, muted=True, start_time=0)
     else:
-        # Fallback: Jos omaa videota ei löydy, näytetään verkkovideo
-        st.warning(f"Videota ei löytynyt polusta: {video_path}")
+        st.error(f"VIRHE: Tiedostoa ei löydy polusta: {os.path.abspath(video_path)}")
+        st.info("Varmista, että kansio on 'assets' ja tiedosto 'esittely.mp4'")
+        
+        # Fallback-video netistä, jotta sivu ei näytä tyhjältä
         st.video("https://videos.pexels.com/video-files/3129671/3129671-hd_1920_1080_30fps.mp4", autoplay=True, muted=True)
+    
     st.caption("Lataa Excel, määritä profiili ja anna tekoälyn etsiä säästökohteet.")
-
-st.write("---")
 
 # 3. TULOS-OSIO
 if uploaded_file:
@@ -127,6 +132,7 @@ if uploaded_file:
                 """, unsafe_allow_html=True)
     else:
         st.error("Virhe: Excelistä ei löytynyt dataa tai rakenne on väärä.")
+
 
 
 

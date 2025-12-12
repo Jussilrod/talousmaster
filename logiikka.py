@@ -107,18 +107,20 @@ def analysoi_talous(df, profiili, data_tyyppi):
         - NYKYISET SIJOITUKSET: {sijoitukset_summa:.2f} €
         - TODELLINEN SÄÄSTÖKYKY: {todellinen_saasto:.2f} €
         """
+        
         financial_framework = """
         VIITEKEHYS ANALYYSIIN (70/20/10 -sääntö):
         - Välttämättömät (70%): Asuminen, ruoka, sähkö, vakuutukset, lainat.
         - Elämäntyyli (20%): Harrastukset, ulkona syöminen, viihde.
         - Säästöt (10%): Sijoitukset, puskuri.
         """
+        
         # Data tyyppi -ohje
         tyyppi_ohje = ""
         if "Toteuma" in data_tyyppi:
-        tyyppi_ohje = "HUOM: Data on TOTEUMA (oikeasti tapahtuneet kulut). Etsi menneisyyden virheet, ylitykset ja vuodot."
+            tyyppi_ohje = "HUOM: Data on TOTEUMA (oikeasti tapahtuneet kulut). Etsi menneisyyden virheet, ylitykset ja vuodot."
         else:
-        tyyppi_ohje = "HUOM: Data on BUDJETTI (suunnitelma). Arvioi onko suunnitelma realistinen ja onko jotain unohtunut."  
+            tyyppi_ohje = "HUOM: Data on BUDJETTI (suunnitelma). Arvioi onko suunnitelma realistinen ja onko jotain unohtunut."  
 
         # --- 3. PROMPT ENGINEERING ---
         model = genai.GenerativeModel('gemini-2.5-flash')
@@ -127,7 +129,7 @@ def analysoi_talous(df, profiili, data_tyyppi):
         prompt = f"""
         ### ROLE
         Toimit kokeneena varainhoitajana (Certified Financial Planner). Tehtäväsi on analysoida asiakkaan talousdata ja antaa konkreettisia, matemaattisesti perusteltuja suosituksia.
-        
+        Yksinkertainen "hei riittää. Ei jaaritteluja, ystävällinen voi olla.
 
         ### CONTEXT
         - Profiili: {profiili['ika']}v, {profiili['suhde']}, {profiili['lapset']} lasta.
@@ -190,6 +192,7 @@ def tallenna_lokiiin(profiili, jaama, tyyppi):
     }])
     header = not os.path.exists(LOG_FILE)
     uusi_tieto.to_csv(LOG_FILE, mode='a', header=header, index=False)
+
 
 
 

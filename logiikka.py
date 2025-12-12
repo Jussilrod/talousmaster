@@ -98,7 +98,7 @@ def analysoi_talous(df, profiili, data_tyyppi):
         """
 
         # --- 2. PROMPT ENGINEERING (Analyytikko) ---
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         data_txt = df.to_string(index=False)
 
         prompt = f"""
@@ -164,6 +164,7 @@ def tallenna_lokiiin(profiili, jaama, tyyppi):
     }])
     header = not os.path.exists(LOG_FILE)
     uusi_tieto.to_csv(LOG_FILE, mode='a', header=header, index=False)
+
 
 
 

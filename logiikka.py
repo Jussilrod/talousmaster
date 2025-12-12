@@ -127,7 +127,7 @@ def analysoi_talous(df, profiili, data_tyyppi):
         prompt = f"""
         ### ROLE
         Toimit kokeneena varainhoitajana (Certified Financial Planner). Tehtäväsi on analysoida asiakkaan talousdata ja antaa konkreettisia, matemaattisesti perusteltuja suosituksia.
-        Yksinkertainen "hei". Mene suoraan asiaan, mutta voi olla ystävällinen.
+        Yksinkertainen hei. Mene suoraan asiaan, mutta voi olla ystävällinen.
         
 
         ### CONTEXT
@@ -191,6 +191,7 @@ def tallenna_lokiiin(profiili, jaama, tyyppi):
     }])
     header = not os.path.exists(LOG_FILE)
     uusi_tieto.to_csv(LOG_FILE, mode='a', header=header, index=False)
+
 
 
 

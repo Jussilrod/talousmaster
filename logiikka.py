@@ -107,6 +107,18 @@ def analysoi_talous(df, profiili, data_tyyppi):
         - NYKYISET SIJOITUKSET: {sijoitukset_summa:.2f} €
         - TODELLINEN SÄÄSTÖKYKY: {todellinen_saasto:.2f} €
         """
+        financial_framework = """
+        VIITEKEHYS ANALYYSIIN (70/20/10 -sääntö):
+        - Välttämättömät (70%): Asuminen, ruoka, sähkö, vakuutukset, lainat.
+        - Elämäntyyli (20%): Harrastukset, ulkona syöminen, viihde.
+        - Säästöt (10%): Sijoitukset, puskuri.
+        """
+        # Data tyyppi -ohje
+        tyyppi_ohje = ""
+        if "Toteuma" in data_tyyppi:
+        tyyppi_ohje = "HUOM: Data on TOTEUMA (oikeasti tapahtuneet kulut). Etsi menneisyyden virheet, ylitykset ja vuodot."
+        else:
+        tyyppi_ohje = "HUOM: Data on BUDJETTI (suunnitelma). Arvioi onko suunnitelma realistinen ja onko jotain unohtunut."  
 
         # --- 3. PROMPT ENGINEERING ---
         model = genai.GenerativeModel('gemini-2.5-flash')
@@ -114,8 +126,8 @@ def analysoi_talous(df, profiili, data_tyyppi):
 
         prompt = f"""
         ### ROLE
-        Olet huipputason talousstrategi. Tyylisi on analyyttinen, rauhallinen ja optimoiva.
-        Älä tervehdi ("Hei..."). Mene suoraan asiaan.
+        Toimit kokeneena varainhoitajana (Certified Financial Planner). Tehtäväsi on analysoida asiakkaan talousdata ja antaa konkreettisia, matemaattisesti perusteltuja suosituksia.
+        
 
         ### CONTEXT
         - Profiili: {profiili['ika']}v, {profiili['suhde']}, {profiili['lapset']} lasta.
@@ -135,19 +147,18 @@ def analysoi_talous(df, profiili, data_tyyppi):
 
         ### INSTRUCTIONS
         1. **70/20/10 Analyysi:** Arvioi menot (Välttämätön / Hupi / Säästö). Huom: Laske nykyiset sijoitukset osaksi Säästö-kategoriaa, vaikka ne ovat teknisesti menoja Excelissä.
-        2. **Action Plan:** - Jos kyseessä on "Kassavirta-optimointi" (pieni miinus, mutta sijoittaa): Ehdota vain pientä viilausta. Älä ehdota satojen eurojen leikkauksia turhaan!
+        2. Tunnista vuodot: Etsi kulueriä, jotka poikkeavat merkittävästi profiilin mukaisesta normaalitasosta.
+        3. **Action Plan:** - Jos kyseessä on "Kassavirta-optimointi" (pieni miinus, mutta sijoittaa): Ehdota vain pientä viilausta. Älä ehdota satojen eurojen leikkauksia turhaan!
            - Tavoite on saada kassavirta ({jaama}€) juuri ja juuri plussalle ilman suuria uhrauksia.
 
-        ### OUTPUT FORMAT (Markdown)
+        VASTAUKSEN RAKENNE (Käytä Markdownia):
 
-        ## 📊 Talouden tila
-        [Tiivis lause tilanteesta. Jos alijäämä on pieni, mainitse että se on helppo korjata].
-        * **Välttämättömät:** ~X% 
-        * **Elämäntyyli:** ~X% 
-        * **Säästöt & Sijoitukset:** {saastoprosentti:.1f}% (Tavoite 10%)
+        ## 📊 Talouden tilannekuva
+        [Lyhyt, ammattimainen yhteenveto siitä, miltä tilanne näyttää suhteessa 70/20/10-sääntöön. Esim: "Välttämättömät menot vievät 80% tuloista, mikä luo riskiä..."]
 
-        ## 📉 Kulupaljastus (Top 3)
-        [Kopioi lista ja kommentoi lyhyesti]
+        ## 💡 Huomiot kulurakenteesta
+        * **Positiivista:** [Mikä on hyvin?]
+        * **Kehitettävää:** [Missä on suurin vuoto?]
 
         ## 🔮 Ennuste
         [Jos kassavirta korjataan nollaan ja sijoitukset ({sijoitukset_summa}€/kk) jatkuvat, paljonko salkku on 10v päästä (7% tuotto)?]
@@ -155,6 +166,10 @@ def analysoi_talous(df, profiili, data_tyyppi):
 
         ## ✅ Tärkein toimenpide
         [Yksi kirurgisen tarkka toimenpide. Jos puuttuu 16€, etsi se 16€, älä 700€.]
+
+        Lopuksi anna talousrating (1-10) perustellen.
+
+        HUOM: Ole suora, kannustava ja ratkaisukeskeinen. Älä käytä jargonia ilman selitystä.
         """
 
         response = model.generate_content(prompt)
@@ -175,6 +190,7 @@ def tallenna_lokiiin(profiili, jaama, tyyppi):
     }])
     header = not os.path.exists(LOG_FILE)
     uusi_tieto.to_csv(LOG_FILE, mode='a', header=header, index=False)
+
 
 
 

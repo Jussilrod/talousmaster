@@ -58,111 +58,99 @@ def lue_kaksiosainen_excel(file):
 
 # --- TEKOÄLY ANALYYSI ---
 def analysoi_talous(df, profiili, data_tyyppi):
-    # Pidetty alkuperäinen malli
-    model = genai.GenerativeModel('gemini-2.5-flash') 
-    
-    data_txt = df.to_string(index=False)
-    tulot = df[df['Kategoria']=='Tulo']['Euroa_KK'].sum()
-    menot = df[df['Kategoria']=='Meno']['Euroa_KK'].sum()
-    jaama = tulot - menot
+    try:
+        # --- 1. PYTHON-LASKENTA (Matemaattinen totuus) ---
+        # Lasketaan faktat, jotta AI ei voi hallusinoida summia.
+        tulot_yht = df[df['Kategoria']=='Tulo']['Euroa_KK'].sum()
+        menot_yht = df[df['Kategoria']=='Meno']['Euroa_KK'].sum()
+        jaama = tulot_yht - menot_yht
+        saastoprosentti = (jaama / tulot_yht * 100) if tulot_yht > 0 else 0
 
-    # 1. Python-laskenta (Force Calculation)
-    tulot_yht = df[df['Kategoria']=='Tulo']['Euroa_KK'].sum()
-    menot_yht = df[df['Kategoria']=='Meno']['Euroa_KK'].sum()
-    jaama = tulot_yht - menot_yht
-    saastoprosentti = (jaama / tulot_yht * 100) if tulot_yht > 0 else 0
-    
-    # Lasketaan "Runway" (Kuinka monta kk pärjää ilman tuloja, jos säästöt 0€ oletuksena kassassa)
-    # Tämä on vain kassavirtapohjainen arvio
-    runway_text = "Kriittinen (kulut ylittävät tulot)" if jaama < 0 else "Vakaa"
+        # Etsitään Top 3 kulut valmiiksi tekstiksi
+        top_menot = df[df['Kategoria']=='Meno'].nlargest(3, 'Euroa_KK')
+        top_menot_txt = ""
+        for _, row in top_menot.iterrows():
+            osuus = (row['Euroa_KK'] / tulot_yht * 100) if tulot_yht > 0 else 0
+            top_menot_txt += f"* **{row['Selite']}**: {row['Euroa_KK']:.2f}€ ({osuus:.1f}% tuloista)\n"
 
-    # Muotoillaan data promptia varten tiiviiksi
-    kpi_stats = f"""
-    - TULOT: {tulot_yht} €
-    - MENOT: {menot_yht} €
-    - JÄÄMÄ: {jaama} € ({saastoprosentti:.1f}%)
-    """
-    
-    tilanne_ohje = ""
-    if jaama > 500:
-        tilanne_ohje = "Talous on vahva. Keskity varallisuuden kasvattamiseen."
-    elif jaama >= 0:
-        tilanne_ohje = "Talous on tasapainossa, mutta herkkä."
-    else:
-        tilanne_ohje = "Talous on alijäämäinen. Etsi säästökohteita."
+        # Luodaan "Fakta-laatikko" promptiin
+        kpi_stats = f"""
+        - TULOT: {tulot_yht:.2f} €
+        - MENOT: {menot_yht:.2f} €
+        - JÄÄMÄ: {jaama:.2f} €
+        - SÄÄSTÖASTE: {saastoprosentti:.1f} %
+        """
 
-    # Data tyyppi -ohje
-    tyyppi_ohje = ""
-    if "Toteuma" in data_tyyppi:
-        tyyppi_ohje = "HUOM: Data on TOTEUMA (oikeasti tapahtuneet kulut). Etsi menneisyyden virheet, ylitykset ja vuodot."
-    else:
-        tyyppi_ohje = "HUOM: Data on BUDJETTI (suunnitelma). Arvioi onko suunnitelma realistinen ja onko jotain unohtunut."    
+        # Logiikka tilanneohjeelle
+        if jaama > 500:
+            tilanne_ohje = "Vahva ylijäämä. Keskity sijoittamiseen."
+        elif jaama >= 0:
+            tilanne_ohje = "Tasapainossa, mutta herkkä yllätyksille."
+        else:
+            tilanne_ohje = "Alijäämäinen! Vaatii nopeita leikkauksia."
 
-    financial_framework = """
-    VIITEKEHYS ANALYYSIIN (70/20/10 -sääntö):
-    - Välttämättömät (70%): Asuminen, ruoka, sähkö, vakuutukset, lainat.
-    - Elämäntyyli (20%): Harrastukset, ulkona syöminen, viihde.
-    - Säästöt (10%): Sijoitukset, puskuri.
-    """
+        # Viitekehys
+        financial_framework = """
+        VIITEKEHYS (70/20/10):
+        - 70% Välttämättömät (Asuminen, ruoka, laskut)
+        - 20% Elämäntyyli (Huvit, ostokset, ravintolat)
+        - 10% Säästöt (Sijoitukset, puskuri, lainanlyhennys)
+        """
 
-   prompt = f"""
-    ### ROLE
-    Toimit empaattisena mutta tiukkana Senior Financial Plannerina. Tavoitteesi on auttaa asiakasta ymmärtämään rahavirtansa ja rakentamaan varallisuutta. Et vain listaa lukuja, vaan etsit niiden takaa käyttäytymismalleja.
+        # --- 2. PROMPT ENGINEERING (Analyytikko) ---
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        data_txt = df.to_string(index=False)
 
-    ### CONTEXT & DATA
-    - Asiakasprofiili: Ikä {profiili['ika']}, Status: {profiili['suhde']}, Lapset: {profiili['lapset']}
-    - Kassavirtatilanne: {tilanne_ohje}
-    - Datan tyyppi: {tyyppi_ohje}
-    
-    Talousdata (Kuukausitaso):
-    {data_txt}
+        prompt = f"""
+        ### ROLE
+        Toimit empaattisena mutta tiukkana Senior Financial Plannerina. Autat asiakasta näkemään numeroiden taakse.
 
-    Viitekehys (Benchmark):
-    {financial_framework}
+        ### CONTEXT & DATA
+        - **Profiili:** {profiili['ika']}v, {profiili['suhde']}, {profiili['lapset']} lasta.
+        - **Status:** {tilanne_ohje} ({data_tyyppi})
 
-    ### INSTRUCTIONS (Step-by-Step)
-    1. **Categorize & Calculate:** Käy läpi annettu data. Summaa yhteen kategoriat (Välttämättömät, Elämäntyyli, Säästöt) viitekehyksen mukaisesti.
-    2. **Analyze Deviation:** Vertaa asiakkaan toteumaa viitekehyksen tavoiteprosentteihin. Missä on suurin poikkeama?
-    3. **Identify Leakage:** Etsi yksittäisiä rivejä, jotka ovat epätavallisen suuria suhteessa profiiliin (esim. suuret ruokakulut yhdelle hengelle tai kalliit vakuutukset).
-    4. **Formulate Action Plan:** Luo 3 konkreettista toimenpidettä.
-       - Jos alijäämäinen: Etsi välittömiä säästöjä.
-       - Jos ylijäämäinen: Optimoi sijoitus/puskuri-suhde.
+        ### ABSOLUUTTISET FAKTAT (Käytä näitä lukuja, ne on laskettu valmiiksi)
+        {kpi_stats}
 
-    ### OUTPUT FORMAT (Markdown)
-    
-    ## 📊 Talouden "Health Check"
-    [Tiivis yhteenveto: Miten hyvin asiakas noudattaa 70/20/10 -sääntöä? Käytä prosentteja.]
-    * **Välttämättömät:** X% (Tavoite 70%)
-    * **Elämäntyyli:** X% (Tavoite 20%)
-    * **Säästöt:** X% (Tavoite 10%)
+        ### SUURIMMAT KULUT (Top 3 valmiiksi laskettuna)
+        {top_menot_txt}
 
-    ## 🔍 Syväanalyysi & Vuodot
-    * **Positiivista:** [Yksi selkeä onnistuminen]
-    * **Huomio:** [Suurin yksittäinen kuluerä tai huolestuttava trendi]
-    * **Profilointi:** [Miten ikä/perhesuhde vaikuttaa tähän? Esim. "Lapsiperheellisenä ruokakulusi ovat..."]
+        ### RIVIDATA (Lähdeaineisto analyysiin)
+        {data_txt}
 
-    ## 📉 Kulupaljastus (Top 2)
-        * **[Kategoria/Rivi]: [Summa]€** - [Lyhyt, terävä kommentti, esim. "Vastaa 15% tuloistasi!"]
-        * **[Kategoria/Rivi]: [Summa]€** - [Kommentti]
+        ### INSTRUCTIONS (Tee tämä)
+        1. **70/20/10 Arvio:** Rividatassa ei lue mikä on "hupia" ja mikä "pakollista". Sinun täytyy päätellä se rivien nimistä (esim. Vuokra=Pakollinen, Netflix=Hupi). Tee arvio, miten asiakkaan kulutus jakautuu näihin koreihin suhteessa faktoihin.
+        2. **Kuluanalyysi:** Kommentoi yllä mainittuja TOP 3 kuluja. Ovatko ne järkeviä tälle profiilille?
+        3. **Simulaatio:** - Jos jäämä > 0: Laske korkoa korolle (7% tuotto) summalle {jaama:.0f}€ per kk, aika 10 vuotta.
+           - Jos jäämä < 0: Laske paljonko velkaa kertyy vuodessa ({jaama:.0f}€ * 12).
+        4. **Toimenpide:** Anna vain yksi, kaikkein tärkein neuvo.
 
-    ## 🚀 3 Askeleen Toimintasuunnitelma
-    1. **[Quick Win - Säästä heti]:** [Konkreettinen toimi, arvioitu säästö €/kk]
-    2. **[Rakenteellinen muutos]:** [Sopimukset, kilpailutus tai budjettikatto]
-    3. **[Varallisuuden kasvu]:** [Mihin ylijäämä tulisi ohjata juuri nyt?]
+        ### OUTPUT FORMAT (Markdown)
 
+        ## 📊 Talouden "Health Check"
+        [Tiivis sanallinen yhteenveto tilanteesta].
+        * **Välttämättömät:** ~X% (Tavoite 70%)
+        * **Elämäntyyli:** ~X% (Tavoite 20%)
+        * **Säästöt:** {saastoprosentti:.1f}% (Tavoite 10%)
 
-    **Arvosana taloudelle (4-10):** [X]/10
+        ## 📉 Kulupaljastus (Top 3 Syöppöä)
+        [Kopioi täsmälleen yllä oleva "Suurimmat kulut" -lista tähän ja lisää lyhyt, terävä kommentti jokaisen perään. Esim. "Liikaa yhdelle hengelle!"]
 
         ## 🔮 Tulevaisuus-simulaatio (10v)
-        [Motivoiva tai varoittava laskelma]
-        👉 **Lopputulos:** [Esim: "Nykyisellä ylijäämällä salkkusi arvo olisi 10v päästä n. **XX XXX €**."]
+        [Motivoiva tai varoittava laskelma perustuen lukuun {jaama:.0f}€/kk]
+        👉 **Lopputulos:** [Esim: "Sijoittamalla tämän summan, salkkusi on 10v päästä **XX XXX €**."]
 
         ## ✅ Tärkein toimenpide (Tee tämä heti)
-        [Yksi konkreettinen käsky/neuvo imperatiivissa. Esim. "Avaa automaattinen tilisiirto..."]
-    """
+        [Yksi konkreettinen käsky imperatiivissa. Esim. "Lopeta X ja siirrä raha Y..."]
         
-    response = model.generate_content(prompt)
-    return response.text, jaama
+        **Arvosana taloudelle (4-10):** [X]/10
+        """
+
+        response = model.generate_content(prompt)
+        return response.text, jaama
+
+    except Exception as e:
+        return f"Virhe analyysissa: {str(e)}", 0
 
 # --- LOKITUS ---
 def tallenna_lokiiin(profiili, jaama, tyyppi):
@@ -176,5 +164,6 @@ def tallenna_lokiiin(profiili, jaama, tyyppi):
     }])
     header = not os.path.exists(LOG_FILE)
     uusi_tieto.to_csv(LOG_FILE, mode='a', header=header, index=False)
+
 
 

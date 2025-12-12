@@ -59,91 +59,102 @@ def lue_kaksiosainen_excel(file):
 # --- TEKOÄLY ANALYYSI ---
 def analysoi_talous(df, profiili, data_tyyppi):
     try:
-        # --- 1. PYTHON-LASKENTA (Matemaattinen totuus) ---
-        # Lasketaan faktat, jotta AI ei voi hallusinoida summia.
+        # --- 1. PYTHON-LASKENTA (Faktat) ---
         tulot_yht = df[df['Kategoria']=='Tulo']['Euroa_KK'].sum()
         menot_yht = df[df['Kategoria']=='Meno']['Euroa_KK'].sum()
-        jaama = tulot_yht - menot_yht
-        saastoprosentti = (jaama / tulot_yht * 100) if tulot_yht > 0 else 0
+        
+        # Lasketaan sijoitukset erikseen, jotta ymmärretään "oikea" tilanne
+        # Oletetaan, että sijoitukset löytyvät menosta hakusanalla "sijoitus", "rahasto", "osake", "nordnet" tms.
+        # Tässä yksinkertaistus: Etsitään rivejä, joissa 'Selite' viittaa sijoituksiin (voit tarkentaa logiikkaa)
+        sijoitukset_summa = 0
+        sijoitus_keywords = ['sijoitus', 'rahasto', 'osake', 'säästö', 'nordnet', 'op-tuotto', 'ostot']
+        for _, row in df[df['Kategoria']=='Meno'].iterrows():
+             if any(x in str(row['Selite']).lower() for x in sijoitus_keywords):
+                 sijoitukset_summa += row['Euroa_KK']
 
-        # Etsitään Top 3 kulut valmiiksi tekstiksi
+        jaama = tulot_yht - menot_yht
+        
+        # TODELLINEN SÄÄSTÖKYKY = Jäämä + Sijoitukset
+        # Jos tämä on plussalla, talous on oikeasti ylijäämäinen, mutta kassavirta on tiukka.
+        todellinen_saasto = jaama + sijoitukset_summa
+        
+        # KPI-laskenta
+        saastoprosentti = (todellinen_saasto / tulot_yht * 100) if tulot_yht > 0 else 0
+
+        # Etsitään Top 3 kulut
         top_menot = df[df['Kategoria']=='Meno'].nlargest(3, 'Euroa_KK')
         top_menot_txt = ""
         for _, row in top_menot.iterrows():
             osuus = (row['Euroa_KK'] / tulot_yht * 100) if tulot_yht > 0 else 0
-            top_menot_txt += f"* **{row['Selite']}**: {row['Euroa_KK']:.2f}€ ({osuus:.1f}% tuloista)\n"
+            top_menot_txt += f"* **{row['Selite']}**: {row['Euroa_KK']:.2f}€ ({osuus:.1f}%)\n"
 
-        # Luodaan "Fakta-laatikko" promptiin
+        # --- 2. ÄLYKÄS TILANNEOHJEISTUS ---
+        # Tämä estää AI:ta ylireagoimasta
+        if jaama < 0 and todellinen_saasto > 0:
+            strategia = "KASSAVIRTA-OPTIMOINTI. Asiakas sijoittaa enemmän kuin hänellä on varaa käteistä. ÄLÄ KÄSE LOPETTAMAAN SIJOITUKSIA KOKONAAN. Neuvo pienentämään sijoituksia tai kuluja vain sen verran (n. 20-50€), että tili ei mene miinukselle."
+            tilanne_teksti = "Investointivetoinen alijäämä (Sijoittaa aggressiivisesti)"
+        elif jaama < 0:
+            strategia = "HÄTÄJARRUTUS. Talous vuotaa oikeasti. Etsi säästökohteita."
+            tilanne_teksti = "Aito alijäämä"
+        else:
+            strategia = "VARALLISUUDEN KASVATUS. Ylijäämä on vahva."
+            tilanne_teksti = "Ylijäämäinen"
+
         kpi_stats = f"""
         - TULOT: {tulot_yht:.2f} €
-        - MENOT: {menot_yht:.2f} €
-        - JÄÄMÄ: {jaama:.2f} €
-        - SÄÄSTÖASTE: {saastoprosentti:.1f} %
+        - MENOT (sis. sijoitukset): {menot_yht:.2f} €
+        - KASSAVIRTA (Tilin saldo kk lopussa): {jaama:.2f} €
+        - NYKYISET SIJOITUKSET: {sijoitukset_summa:.2f} €
+        - TODELLINEN SÄÄSTÖKYKY: {todellinen_saasto:.2f} €
         """
 
-        # Logiikka tilanneohjeelle
-        if jaama > 500:
-            tilanne_ohje = "Vahva ylijäämä. Keskity sijoittamiseen."
-        elif jaama >= 0:
-            tilanne_ohje = "Tasapainossa, mutta herkkä yllätyksille."
-        else:
-            tilanne_ohje = "Alijäämäinen! Vaatii nopeita leikkauksia."
-
-        # Viitekehys
-        financial_framework = """
-        VIITEKEHYS (70/20/10):
-        - 70% Välttämättömät (Asuminen, ruoka, laskut)
-        - 20% Elämäntyyli (Huvit, ostokset, ravintolat)
-        - 10% Säästöt (Sijoitukset, puskuri, lainanlyhennys)
-        """
-
-        # --- 2. PROMPT ENGINEERING (Analyytikko) ---
+        # --- 3. PROMPT ENGINEERING ---
         model = genai.GenerativeModel('gemini-2.5-flash')
         data_txt = df.to_string(index=False)
 
         prompt = f"""
         ### ROLE
-        Toimit empaattisena mutta tiukkana Senior Financial Plannerina. Autat asiakasta näkemään numeroiden taakse.
+        Olet huipputason talousstrategi. Tyylisi on analyyttinen, rauhallinen ja optimoiva.
+        Älä tervehdi ("Hei..."). Mene suoraan asiaan.
 
-        ### CONTEXT & DATA
-        - **Profiili:** {profiili['ika']}v, {profiili['suhde']}, {profiili['lapset']} lasta.
-        - **Status:** {tilanne_ohje} ({data_tyyppi})
+        ### CONTEXT
+        - Profiili: {profiili['ika']}v, {profiili['suhde']}, {profiili['lapset']} lasta.
+        - Tilanne: {tilanne_teksti}
+        
+        ### STRATEGIA (Noudata tätä!)
+        {strategia}
 
-        ### ABSOLUUTTISET FAKTAT (Käytä näitä lukuja, ne on laskettu valmiiksi)
+        ### FAKTAT (Käytä näitä lukuja):
         {kpi_stats}
 
-        ### SUURIMMAT KULUT (Top 3 valmiiksi laskettuna)
+        ### SUURIMMAT KULUT:
         {top_menot_txt}
 
-        ### RIVIDATA (Lähdeaineisto analyysiin)
+        ### DATA:
         {data_txt}
 
-        ### INSTRUCTIONS (Tee tämä)
-        1. **70/20/10 Arvio:** Rividatassa ei lue mikä on "hupia" ja mikä "pakollista". Sinun täytyy päätellä se rivien nimistä (esim. Vuokra=Pakollinen, Netflix=Hupi). Tee arvio, miten asiakkaan kulutus jakautuu näihin koreihin suhteessa faktoihin.
-        2. **Kuluanalyysi:** Kommentoi yllä mainittuja TOP 3 kuluja. Ovatko ne järkeviä tälle profiilille?
-        3. **Simulaatio:** - Jos jäämä > 0: Laske korkoa korolle (7% tuotto) summalle {jaama:.0f}€ per kk, aika 10 vuotta.
-           - Jos jäämä < 0: Laske paljonko velkaa kertyy vuodessa ({jaama:.0f}€ * 12).
-        4. **Toimenpide:** Anna vain yksi, kaikkein tärkein neuvo.
+        ### INSTRUCTIONS
+        1. **70/20/10 Analyysi:** Arvioi menot (Välttämätön / Hupi / Säästö). Huom: Laske nykyiset sijoitukset osaksi Säästö-kategoriaa, vaikka ne ovat teknisesti menoja Excelissä.
+        2. **Action Plan:** - Jos kyseessä on "Kassavirta-optimointi" (pieni miinus, mutta sijoittaa): Ehdota vain pientä viilausta. Älä ehdota satojen eurojen leikkauksia turhaan!
+           - Tavoite on saada kassavirta ({jaama}€) juuri ja juuri plussalle ilman suuria uhrauksia.
 
         ### OUTPUT FORMAT (Markdown)
 
-        ## 📊 Talouden "Health Check"
-        [Tiivis sanallinen yhteenveto tilanteesta].
-        * **Välttämättömät:** ~X% (Tavoite 70%)
-        * **Elämäntyyli:** ~X% (Tavoite 20%)
-        * **Säästöt:** {saastoprosentti:.1f}% (Tavoite 10%)
+        ## 📊 Talouden tila
+        [Tiivis lause tilanteesta. Jos alijäämä on pieni, mainitse että se on helppo korjata].
+        * **Välttämättömät:** ~X% 
+        * **Elämäntyyli:** ~X% 
+        * **Säästöt & Sijoitukset:** {saastoprosentti:.1f}% (Tavoite 10%)
 
-        ## 📉 Kulupaljastus (Top 3 Syöppöä)
-        [Kopioi täsmälleen yllä oleva "Suurimmat kulut" -lista tähän ja lisää lyhyt, terävä kommentti jokaisen perään. Esim. "Liikaa yhdelle hengelle!"]
+        ## 📉 Kulupaljastus (Top 3)
+        [Kopioi lista ja kommentoi lyhyesti]
 
-        ## 🔮 Tulevaisuus-simulaatio (10v)
-        [Motivoiva tai varoittava laskelma perustuen lukuun {jaama:.0f}€/kk]
-        👉 **Lopputulos:** [Esim: "Sijoittamalla tämän summan, salkkusi on 10v päästä **XX XXX €**."]
+        ## 🔮 Ennuste
+        [Jos kassavirta korjataan nollaan ja sijoitukset ({sijoitukset_summa}€/kk) jatkuvat, paljonko salkku on 10v päästä (7% tuotto)?]
+        👉 **Potentiaali:** [Summa]
 
-        ## ✅ Tärkein toimenpide (Tee tämä heti)
-        [Yksi konkreettinen käsky imperatiivissa. Esim. "Lopeta X ja siirrä raha Y..."]
-        
-        **Arvosana taloudelle (4-10):** [X]/10
+        ## ✅ Tärkein toimenpide
+        [Yksi kirurgisen tarkka toimenpide. Jos puuttuu 16€, etsi se 16€, älä 700€.]
         """
 
         response = model.generate_content(prompt)
@@ -164,6 +175,7 @@ def tallenna_lokiiin(profiili, jaama, tyyppi):
     }])
     header = not os.path.exists(LOG_FILE)
     uusi_tieto.to_csv(LOG_FILE, mode='a', header=header, index=False)
+
 
 
 

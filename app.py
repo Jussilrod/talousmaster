@@ -48,18 +48,23 @@ with st.sidebar:
     
     st.markdown("---")
     
-    # 2. Tietoturva (UUSI)
+    # 2. Tietoturva (PÄIVITETTY TEKSTI)
     with st.expander("🔒 Tietoturva & Yksityisyys", expanded=False):
         st.markdown("""
         <small>
-        **Tietosi ovat turvassa.**
+        **1. SSL-salaus:**
+        Yhteys tähän sovellukseen on suojattu (HTTPS/SSL), mikä tarkoittaa, että verkkoliikenne sinun ja palvelimen välillä on salattua.
         
-        1. **Ei tallennusta:** Lataamasi Excel käsitellään vain väliaikaisessa muistissa (RAM). Sitä ei tallenneta palvelimelle.
-        2. **Anonyymi:** Tekoäly (Google Gemini) analysoi lukuja tilastollisesti. Henkilötietoja ei yhdistetä dataan.
-        3. **Salaus:** Yhteys on SSL-suojattu.
+        **2. Ei tallennusta:**
+        Lataamasi Excel käsitellään vain väliaikaisessa muistissa (RAM) istunnon ajan. Tiedostoa ei tallenneta tietokantaan.
+        
+        **3. Tietojen minimointi:**
+        Sovellus ei lisää tai kerää henkilötietoja. Tekoäly näkee vain Excelissä olevat luvut ja tekstit.
+        
+        ⚠️ **Suositus:** Poista Excelistä nimesi ja henkilötunnuksesi ennen latausta. Käytä vain lukuja.
         </small>
         """, unsafe_allow_html=True)
-
+        
     st.markdown("---")
     st.caption("Vinkki: Täytä Exceliin kuukausisarakkeet (esim. Tammikuu, Helmikuu), niin näet trendit.")
 
@@ -250,3 +255,4 @@ else:
                     st.markdown(f"""<div style="background-color:#f8fafc; padding:30px; border-radius:12px; border:1px solid #e2e8f0;">{analyysi_teksti}</div>""", unsafe_allow_html=True)
     else:
         st.error("Virhe datan luvussa.")
+

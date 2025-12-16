@@ -252,10 +252,10 @@ else:
                     st.markdown("**1. Perustiedot**")
                     c_a1, c_a2 = st.columns(2)
                     with c_a1:
-                        ika = st.number_input("Oma ikäsi", 18, 99, 37)
-                        lapset = st.number_input("Lasten määrä taloudessa", 0, 10, 2)
+                        ika = st.number_input("Oma ikäsi", 18, 99, 30)
+                        lapset = st.number_input("Lasten määrä taloudessa", 0, 10, 0)
                     with c_a2:
-                        status = st.selectbox("Elämäntilanne", ["Sinkku", "Parisuhteessa (yhteistalous)", "Parisuhteessa (erilliset)", "Lapsiperhe", "Yksinhuoltaja"], index=3)
+                        status = st.selectbox("Elämäntilanne", ["Sinkku", "Parisuhteessa (yhteistalous)", "Parisuhteessa (erilliset)", "Lapsiperhe", "Yksinhuoltaja"], index=0)
                         data_tyyppi = st.radio("Datan lähde", ["Toteuma (Tiliote)", "Suunnitelma (Budjetti)"])
                     
                     st.markdown("---")
@@ -275,3 +275,4 @@ else:
                     st.markdown(f"""<div style="background-color:#f8fafc; padding:30px; border-radius:12px; border:1px solid #e2e8f0;">{analyysi_teksti}</div>""", unsafe_allow_html=True)
     else:
         st.error("Virhe datan luvussa.")
+

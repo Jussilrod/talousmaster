@@ -54,7 +54,30 @@ def lue_kaksiosainen_excel(file):
         return pd.DataFrame(data_rows)
     except Exception as e:
         return pd.DataFrame()
+ # --- SIMULOINTI ---
+def laske_tulevaisuus(aloitussumma, kk_saasto, korko_pros, vuodet):
+    """Laskee sijoituksen kehityksen kuukausitasolla."""
+    data = []
+    saldo = aloitussumma
+    kk_korko = (korko_pros / 100) / 12
+    
+    for kk in range(vuodet * 12):
+        saldo += kk_saasto
+        saldo *= (1 + kk_korko)
         
+        # Tallennetaan data joka vuodelta (tai tiheämmin jos halutaan)
+        if kk % 12 == 0: 
+            vuosi = int(kk / 12)
+            talletettu = aloitussumma + (kk_saasto * kk)
+            tuotto = saldo - talletettu
+            data.append({
+                "Vuosi": vuosi,
+                "Oma pääoma": round(talletettu, 0),
+                "Tuotto": round(tuotto, 0),
+                "Yhteensä": round(saldo, 0)
+            })
+            
+    return pd.DataFrame(data)       
 
 # --- TEKOÄLY ANALYYSI ---
 def analysoi_talous(df, profiili, data_tyyppi):
@@ -192,6 +215,7 @@ def tallenna_lokiiin(profiili, jaama, tyyppi):
     }])
     header = not os.path.exists(LOG_FILE)
     uusi_tieto.to_csv(LOG_FILE, mode='a', header=header, index=False)
+
 
 
 

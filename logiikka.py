@@ -63,80 +63,76 @@ def laske_tulevaisuus(aloitussumma, kk_saasto, korko_pros, vuodet):
             data.append({"Vuosi": int(kk / 12), "Yhteensä": round(saldo, 0)})
     return pd.DataFrame(data)
 
-# --- ANALYYSI (KORJATTU MALLI & TIEDOT) ---
-def analysoi_talous(df, profiili, data_tyyppi):
+# --- ANALYYSI (PARANNETTU KONTEKSTI) ---
+def analysoi_talous(df_avg, profiili, data_tyyppi):
     try:
-        tulot_yht = df[df['Kategoria']=='Tulo']['Summa'].sum()
-        menot_yht = df[df['Kategoria']=='Meno']['Summa'].sum()
+        # 1. Laskenta (pysyy samana)
+        tulot = df_avg[df_avg['Kategoria']=='Tulo']['Summa'].sum()
+        menot = df_avg[df_avg['Kategoria']=='Meno']['Summa'].sum()
+        jaama = tulot - menot
         
         sijoitukset_summa = 0
         sijoitus_keywords = ['sijoitus', 'rahasto', 'osake', 'säästö', 'nordnet', 'op-tuotto', 'ostot', 'etf']
-        for _, row in df[df['Kategoria']=='Meno'].iterrows():
+        for _, row in df_avg[df_avg['Kategoria']=='Meno'].iterrows():
              if any(x in str(row['Selite']).lower() for x in sijoitus_keywords):
                  sijoitukset_summa += row['Summa']
-
-        jaama = tulot_yht - menot_yht
+        
         todellinen_saasto = jaama + sijoitukset_summa
-        
-        top_menot = df[df['Kategoria']=='Meno'].nlargest(3, 'Summa')
-        top_menot_txt = ""
-        for _, row in top_menot.iterrows():
-            osuus = (row['Summa'] / tulot_yht * 100) if tulot_yht > 0 else 0
-            top_menot_txt += f"* **{row['Selite']}**: {row['Summa']:.2f}€ ({osuus:.1f}%)\n"
 
-        if jaama < 0 and todellinen_saasto > 0:
-            strategia = "KASSAVIRTA-OPTIMOINTI. Asiakas sijoittaa enemmän kuin on varaa käteistä."
-            tilanne_teksti = "Investointivetoinen alijäämä"
-        elif jaama < 0:
-            strategia = "HÄTÄJARRUTUS. Talous vuotaa."
-            tilanne_teksti = "Aito alijäämä"
+        # Top kulut
+        top_menot = df_avg[df_avg['Kategoria']=='Meno'].nlargest(5, 'Summa')
+        kulut_txt = top_menot.to_string(index=False)
+
+        # 2. Älykäs tilannetulkinta
+        if jaama < 0:
+            status_txt = "Kriittinen (Alijäämäinen)"
+        elif todellinen_saasto > 500:
+            status_txt = "Vahva (Ylijäämäinen)"
         else:
-            strategia = "VARALLISUUDEN KASVATUS."
-            tilanne_teksti = "Ylijäämäinen"
+            status_txt = "Tasapainoilija (Nollatulos)"
 
-        kpi_stats = f"""
-        - TULOT: {tulot_yht:.2f} €
-        - MENOT: {menot_yht:.2f} €
-        - KASSAVIRTA: {jaama:.2f} €
-        - SIJOITUKSET: {sijoitukset_summa:.2f} €
-        """
-        
-        # Datatyypin ohjeistus
-        tyyppi_ohje = "HUOM: Data on TOTEUMA (oikeasti tapahtunut)." if "Toteuma" in str(data_tyyppi) else "HUOM: Data on BUDJETTI (suunnitelma)."
-
-        # KÄYTETÄÄN TOIMIVAKSI TODETTUA MALLIA
+        # 3. PROMPT ENGINEERING (KORJATTU HENKILÖKUVAUS)
         model = genai.GenerativeModel('gemini-2.5-flash')
-        data_txt = df.to_string(index=False)
-
+        
         prompt = f"""
         ### ROLE
-        Toimit varainhoitajana.
-
-        ### CONTEXT
-        - Profiili: {profiili['ika']}v, {profiili['suhde']}.
-        - Lapset: {profiili.get('lapset', 0)} kpl.
-        - Tilanne: {tilanne_teksti}
-        - Datan tyyppi: {tyyppi_ohje}
+        Toimit yksityispankkiirina (Private Banker). Tyylisi on analyyttinen mutta empaattinen.
         
-        ### STRATEGIA
-        {strategia}
+        ### ASIAKASPROFIILI (Tärkeä: Erota henkilö ja kotitalous)
+        - **Henkilö:** {profiili['ika']}-vuotias aikuinen.
+        - **Kotitalous:** {profiili['suhde']}. Lapsia: {profiili['lapset']}.
+        - **Päätavoite:** {profiili['tavoite']}
+        - **Nettovarallisuus:** {profiili['varallisuus']} € (Asunnot + sijoitukset - velat)
+        
+        ### TALOUDEN DATA ({data_tyyppi})
+        - Tulot: {tulot:.0f} €/kk
+        - Menot: {menot:.0f} €/kk
+        - Jäämä: {jaama:.0f} €/kk
+        - Säästöön menee nyt (sis. sijoitukset): {todellinen_saasto:.0f} €/kk
+        - Talouden tila: {status_txt}
 
-        ### FAKTAT:
-        {kpi_stats}
-
-        ### TOP KULUT:
-        {top_menot_txt}
-
-        ### DATA:
-        {data_txt}
+        ### TOP 5 KULUERÄT
+        {kulut_txt}
 
         ### TEHTÄVÄ
-        Kirjoita Markdown-analyysi:
-        1. **Tilannekuva**: Ota kantaa elämäntilanteeseen (lapset, ikä) ja lukuihin.
-        2. **Huomiot kuluista**: Mikä on hyvin/huonosti?
-        3. **Ennuste**: Jos nykyinen säästö ({todellinen_saasto:.0f}€) jatkuu 10v (7%), mikä on potti?
-        4. **Toimenpide**: Yksi konkreettinen neuvo.
-        5. **Rating**: Arvosana 1-10.
+        Luo Markdown-muotoinen analyysi (älä käytä otsikoissa risuaitaa # vaan ##):
+
+        ## 1. Tilannekuva
+        Kuvaile tilannetta luonnollisesti. Esim. "Olet 37-vuotias ja elät lapsiperhearkea..." eikä "Olet 37-vuotias perhe".
+        Peilaa nykytilannetta ilmoitettuun tavoitteeseen ("{profiili['tavoite']}"). Onko se realistinen näillä luvuilla?
+
+        ## 2. Kulujen rakenne
+        Analysoi TOP-kuluja. Ovatko ne linjassa perhekoon ({profiili['lapset']} lasta) kanssa? 
+        Jos lapsia on, huomioi se (esim. ruokakulut ovat luonnostaan korkeammat).
+
+        ## 3. Toimenpidesuositus
+        Anna YKSI konkreettinen neuvo, joka auttaa saavuttamaan tavoitteen ({profiili['tavoite']}).
+        
+        ## 4. Ennuste
+        Jos nykyinen säästötahti ({todellinen_saasto:.0f}€/kk) jatkuu, onko tavoite saavutettavissa?
+
+        ## Arvosana (4-10)
+        Perustele lyhyesti.
         """
 
         response = model.generate_content(prompt)
@@ -144,6 +140,7 @@ def analysoi_talous(df, profiili, data_tyyppi):
 
     except Exception as e:
         return f"Virhe analyysissa: {str(e)}"
+        
 
 # --- CHAT ---
 def chat_with_data(df, user_question, history):
@@ -160,3 +157,4 @@ def chat_with_data(df, user_question, history):
         return response.text
     except:
         return "Virhe yhteydessä."
+

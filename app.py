@@ -98,17 +98,53 @@ else:
             else:
                 st.warning("Trendit vaativat dataa useammalta kuukaudelta.")
 
-        # TAB 3: SIMULAATTORI
+      # TAB 3: SIMULAATTORI (PINOTTU GRAAFI)
         with tab3:
-            st.subheader("Korkoa korolle -laskuri")
-            c_sim1, c_sim2 = st.columns([1,2])
+            st.subheader("💰 Korkoa korolle -laskuri")
+            st.caption("Katso, kuinka vihreä alue (tuotto) alkaa dominoida vuosien saatossa.")
+            
+            c_sim1, c_sim2 = st.columns([1, 2])
+            
             with c_sim1:
-                kk_saasto = st.slider("Säästö (€/kk)", 0.0, 2000.0, float(max(jaama_avg, 50.0)), step=10.0)
-                vuodet = st.slider("Aika (v)", 1, 40, 20)
-                korko = st.slider("Tuotto %", 1.0, 15.0, 7.0)
+                # Otetaan oletusarvoksi laskettu jäämä, mutta vähintään 50€
+                oletus_saasto = float(max(jaama_avg, 50.0))
+                
+                kk_saasto = st.slider("Kuukausisäästö (€)", 0.0, 3000.0, oletus_saasto, step=10.0)
+                vuodet = st.slider("Sijoitusaika (vuotta)", 1, 50, 20)
+                korko = st.slider("Oletettu vuosituotto (%)", 1.0, 15.0, 7.0)
+                alkupotti = st.number_input("Alkupääoma / Nykyiset sijoitukset (€)", 0, 1000000, 0, step=1000)
+            
             with c_sim2:
-                df_sim = logiikka.laske_tulevaisuus(0, kk_saasto, korko, vuodet)
-                st.plotly_chart(px.area(df_sim, x="Vuosi", y="Yhteensä"), use_container_width=True)
+                # Lasketaan data
+                df_sim = logiikka.laske_tulevaisuus(alkupotti, kk_saasto, korko, vuodet)
+                
+                # Otetaan viimeisen vuoden luvut talteen
+                loppusumma = df_sim.iloc[-1]['Yhteensä']
+                loppu_tuotto = df_sim.iloc[-1]['Tuotto']
+                loppu_oma = df_sim.iloc[-1]['Oma pääoma']
+                
+                # Näytetään lopputulos isosti
+                st.metric(
+                    label=f"Salkun arvo {vuodet} vuoden päästä", 
+                    value=f"{loppusumma:,.0f} €", 
+                    delta=f"Josta tuottoa: {loppu_tuotto:,.0f} €"
+                )
+                
+                # Piirretään PINOTTU aluekaavio (Stacked Area Chart)
+                fig_area = px.area(
+                    df_sim, 
+                    x="Vuosi", 
+                    y=["Oma pääoma", "Tuotto"], # Tässä järjestyksessä: Pääoma alle, tuotto päälle
+                    title="Varallisuuden kehitys",
+                    color_discrete_map={
+                        "Oma pääoma": "#94a3b8",  # Harmaa (Slate-400)
+                        "Tuotto": "#22c55e"       # Vihreä (Green-500)
+                    }
+                )
+                
+                # Hienosäätö: Työkaluvihje näyttää summan
+                fig_area.update_layout(hovermode="x unified", yaxis_title="Euroa (€)")
+                st.plotly_chart(fig_area, use_container_width=True)
 
         # TAB 4: CHAT (NYT OMA SIVU)
         with tab4:
@@ -188,4 +224,5 @@ else:
                         {analyysi_teksti}
                     </div>
                     """, unsafe_allow_html=True)
+
 

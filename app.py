@@ -127,7 +127,7 @@ else:
         tab1, tab2, tab3, tab4, tab5 = st.tabs([
             "📊 Yleiskuva", 
             "📈 Trendit", 
-            "🔮 Miljonääri-simulaattori, # <--- UUSI NIMI
+            "🔮 Miljonääri-simulaattori", # <--- UUSI NIMI
             "💬 Chat", 
             "📝 Analyysi"
         ])
@@ -257,6 +257,7 @@ else:
                     st.markdown(f"""<div style="background-color:#f8fafc; padding:30px; border-radius:12px; border:1px solid #e2e8f0;">{analyysi_teksti}</div>""", unsafe_allow_html=True)
     else:
         st.error("Virhe datan luvussa.")
+
 
 
 

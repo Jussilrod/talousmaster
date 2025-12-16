@@ -84,40 +84,35 @@ def laske_tulevaisuus(aloitussumma, kk_saasto, korko_pros, vuodet):
     return pd.DataFrame(data)
     
     
-# --- TEKOÄLY ANALYYSI ---
+# --- ANALYYSI (KORJATTU & SÄILYTETTY PROMPT) ---
 def analysoi_talous(df, profiili, data_tyyppi):
     try:
         # --- 1. PYTHON-LASKENTA (Faktat) ---
-        tulot_yht = df[df['Kategoria']=='Tulo']['Euroa_KK'].sum()
-        menot_yht = df[df['Kategoria']=='Meno']['Euroa_KK'].sum()
+        # HUOM: Uudessa datassa sarake on 'Summa', ei 'Euroa_KK'
+        tulot_yht = df[df['Kategoria']=='Tulo']['Summa'].sum()
+        menot_yht = df[df['Kategoria']=='Meno']['Summa'].sum()
         
-        # Lasketaan sijoitukset erikseen, jotta ymmärretään "oikea" tilanne
-        # Oletetaan, että sijoitukset löytyvät menosta hakusanalla "sijoitus", "rahasto", "osake", "nordnet" tms.
-        # Tässä yksinkertaistus: Etsitään rivejä, joissa 'Selite' viittaa sijoituksiin (voit tarkentaa logiikkaa)
+        # Lasketaan sijoitukset erikseen
         sijoitukset_summa = 0
-        sijoitus_keywords = ['sijoitus', 'rahasto', 'osake', 'säästö', 'nordnet', 'op-tuotto', 'ostot']
+        sijoitus_keywords = ['sijoitus', 'rahasto', 'osake', 'säästö', 'nordnet', 'op-tuotto', 'ostot', 'etf']
+        
         for _, row in df[df['Kategoria']=='Meno'].iterrows():
              if any(x in str(row['Selite']).lower() for x in sijoitus_keywords):
-                 sijoitukset_summa += row['Euroa_KK']
+                 sijoitukset_summa += row['Summa']
 
         jaama = tulot_yht - menot_yht
         
-        # TODELLINEN SÄÄSTÖKYKY = Jäämä + Sijoitukset
-        # Jos tämä on plussalla, talous on oikeasti ylijäämäinen, mutta kassavirta on tiukka.
+        # TODELLINEN SÄÄSTÖKYKY
         todellinen_saasto = jaama + sijoitukset_summa
         
-        # KPI-laskenta
-        saastoprosentti = (todellinen_saasto / tulot_yht * 100) if tulot_yht > 0 else 0
-
         # Etsitään Top 3 kulut
-        top_menot = df[df['Kategoria']=='Meno'].nlargest(3, 'Euroa_KK')
+        top_menot = df[df['Kategoria']=='Meno'].nlargest(3, 'Summa')
         top_menot_txt = ""
         for _, row in top_menot.iterrows():
-            osuus = (row['Euroa_KK'] / tulot_yht * 100) if tulot_yht > 0 else 0
-            top_menot_txt += f"* **{row['Selite']}**: {row['Euroa_KK']:.2f}€ ({osuus:.1f}%)\n"
+            osuus = (row['Summa'] / tulot_yht * 100) if tulot_yht > 0 else 0
+            top_menot_txt += f"* **{row['Selite']}**: {row['Summa']:.2f}€ ({osuus:.1f}%)\n"
 
         # --- 2. ÄLYKÄS TILANNEOHJEISTUS ---
-        # Tämä estää AI:ta ylireagoimasta
         if jaama < 0 and todellinen_saasto > 0:
             strategia = "KASSAVIRTA-OPTIMOINTI. Asiakas sijoittaa enemmän kuin hänellä on varaa käteistä. ÄLÄ KÄSE LOPETTAMAAN SIJOITUKSIA KOKONAAN. Neuvo pienentämään sijoituksia tai kuluja vain sen verran (n. 20-50€), että tili ei mene miinukselle."
             tilanne_teksti = "Investointivetoinen alijäämä (Sijoittaa aggressiivisesti)"
@@ -136,13 +131,6 @@ def analysoi_talous(df, profiili, data_tyyppi):
         - TODELLINEN SÄÄSTÖKYKY: {todellinen_saasto:.2f} €
         """
         
-        financial_framework = """
-        VIITEKEHYS ANALYYSIIN (70/20/10 -sääntö):
-        - Välttämättömät (70%): Asuminen, ruoka, sähkö, vakuutukset, lainat.
-        - Elämäntyyli (20%): Harrastukset, ulkona syöminen, viihde.
-        - Säästöt (10%): Sijoitukset, puskuri.
-        """
-        
         # Data tyyppi -ohje
         tyyppi_ohje = ""
         if "Toteuma" in data_tyyppi:
@@ -151,17 +139,19 @@ def analysoi_talous(df, profiili, data_tyyppi):
             tyyppi_ohje = "HUOM: Data on BUDJETTI (suunnitelma). Arvioi onko suunnitelma realistinen ja onko jotain unohtunut."  
 
         # --- 3. PROMPT ENGINEERING ---
+        # Käytetään 2.5-flash mallia, joka on vakain tällä hetkellä
         model = genai.GenerativeModel('gemini-2.5-flash')
         data_txt = df.to_string(index=False)
 
         prompt = f"""
         ### ROLE
         Toimit kokeneena varainhoitajana (Certified Financial Planner). Tehtäväsi on analysoida asiakkaan talousdata ja antaa konkreettisia, matemaattisesti perusteltuja suosituksia.
-        Yksinkertainen "hei riittää. Ei jaaritteluja, ystävällinen voi olla.
+        Yksinkertainen "hei" riittää aloitukseksi. Ei jaaritteluja, ystävällinen voi olla.
 
         ### CONTEXT
-        - Profiili: {profiili['ika']}v, {profiili['suhde']}, {profiili['lapset']} lasta.
+        - Profiili: {profiili['ika']}v, {profiili['suhde']}.
         - Tilanne: {tilanne_teksti}
+        - Datatyyppi: {tyyppi_ohje}
         
         ### STRATEGIA (Noudata tätä!)
         {strategia}
@@ -179,7 +169,7 @@ def analysoi_talous(df, profiili, data_tyyppi):
         1. **70/20/10 Analyysi:** Arvioi menot (Välttämätön / Hupi / Säästö). Huom: Laske nykyiset sijoitukset osaksi Säästö-kategoriaa, vaikka ne ovat teknisesti menoja Excelissä.
         2. Tunnista vuodot: Etsi kulueriä, jotka poikkeavat merkittävästi profiilin mukaisesta normaalitasosta.
         3. **Action Plan:** - Jos kyseessä on "Kassavirta-optimointi" (pieni miinus, mutta sijoittaa): Ehdota vain pientä viilausta. Älä ehdota satojen eurojen leikkauksia turhaan!
-           - Tavoite on saada kassavirta ({jaama}€) juuri ja juuri plussalle ilman suuria uhrauksia.
+           - Tavoite on saada kassavirta ({jaama:.0f}€) juuri ja juuri plussalle ilman suuria uhrauksia.
 
         VASTAUKSEN RAKENNE (Käytä Markdownia):
 
@@ -191,7 +181,7 @@ def analysoi_talous(df, profiili, data_tyyppi):
         * **Kehitettävää:** [Missä on suurin vuoto?]
 
         ## 🔮 Ennuste
-        [Jos kassavirta korjataan nollaan ja sijoitukset ({sijoitukset_summa}€/kk) jatkuvat, paljonko salkku on 10v päästä (7% tuotto)?]
+        [Jos kassavirta korjataan nollaan ja sijoitukset ({sijoitukset_summa:.0f}€/kk) jatkuvat, paljonko salkku on 10v päästä (7% tuotto)?]
         👉 **Potentiaali:** [Summa]
 
         ## ✅ Tärkein toimenpide
@@ -203,10 +193,12 @@ def analysoi_talous(df, profiili, data_tyyppi):
         """
 
         response = model.generate_content(prompt)
-        return response.text, jaama
+        
+        # Palautetaan vain teksti, koska app.py odottaa vain yhtä arvoa
+        return response.text
 
     except Exception as e:
-        return f"Virhe analyysissa: {str(e)}", 0
+        return f"Virhe analyysissa: {str(e)}"
 
 # --- LOKITUS ---
 def tallenna_lokiiin(profiili, jaama, tyyppi):
@@ -239,6 +231,7 @@ def chat_with_data(df, user_question, history):
         return response.text
     except:
         return "Tekoälyyn ei saada yhteyttä."
+
 
 
 

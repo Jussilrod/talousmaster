@@ -48,15 +48,15 @@ with st.sidebar:
     
     st.markdown("---")
     
-    # 2. Tietoturva (PÄIVITETTY TEKSTI)
+   # 2. Tietoturva (PÄIVITETTY: Varoitus ensin)
     with st.expander("🔒 Tietoturva & Yksityisyys", expanded=False):
         st.markdown("""
-        <small>
-        
+        <small style="color: #ef4444;">
         ⚠️ **Suositus:** Älä syötä Exceliin henkilötietojasi tai tilinumeroita. Data käsitellään anonyymisti.
         </small>
-        """, unsafe_allow_html=True)
-
+        
+        ---
+        
         **1. SSL-salaus:**
         Yhteys tähän sovellukseen on suojattu (HTTPS/SSL), mikä tarkoittaa, että verkkoliikenne sinun ja palvelimen välillä on salattua.
         
@@ -65,8 +65,7 @@ with st.sidebar:
         
         **3. Tietojen minimointi:**
         Sovellus ei lisää tai kerää henkilötietoja. Tekoäly näkee vain Excelissä olevat luvut ja tekstit.
-        
-        
+        """, unsafe_allow_html=True)
         
     st.markdown("---")
     st.caption("Vinkki: Täytä Exceliin kuukausisarakkeet (esim. Tammikuu, Helmikuu), niin näet trendit.")
@@ -258,5 +257,6 @@ else:
                     st.markdown(f"""<div style="background-color:#f8fafc; padding:30px; border-radius:12px; border:1px solid #e2e8f0;">{analyysi_teksti}</div>""", unsafe_allow_html=True)
     else:
         st.error("Virhe datan luvussa.")
+
 
 

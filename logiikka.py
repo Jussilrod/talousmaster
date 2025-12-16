@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import google.generativeai as genai
 import os
-from datetime import datetime
 
 # --- KONFIGURAATIO ---
 def konfiguroi_ai():
@@ -18,13 +17,11 @@ def konfiguroi_ai():
     except:
         return False
 
-# --- EXCELIN LUKU (AIKASARJATUKI) ---
+# --- EXCELIN LUKU ---
 @st.cache_data
 def lue_kaksiosainen_excel(file):
     try:
         df = pd.read_excel(file, header=None)
-        
-        # Etsitään Tulot ja Menot rivit
         col_b = df.iloc[:, 1].astype(str)
         try:
             tulot_idx = df[col_b.str.contains("Tulot", na=False, case=False)].index[0]
@@ -32,10 +29,8 @@ def lue_kaksiosainen_excel(file):
         except IndexError:
             return pd.DataFrame()
 
-        # Oletetaan, että rivillä (tulot_idx - 1) on otsikot: "Selite", "Tammikuu", "Helmikuu"...
         header_row_idx = tulot_idx - 1 if tulot_idx > 0 else 0
         headers = df.iloc[header_row_idx]
-        
         data_rows = []
 
         def process_section(start_idx, end_idx, kategoria):
@@ -43,29 +38,17 @@ def lue_kaksiosainen_excel(file):
             for _, row in section.iterrows():
                 selite = str(row[1])
                 if "Yhteensä" in selite or selite == "nan": continue
-                
-                # Käydään läpi sarakkeet C (indeksi 2) eteenpäin
                 for col_idx in range(2, df.shape[1]):
                     val = pd.to_numeric(row[col_idx], errors='coerce')
                     col_name = str(headers[col_idx]) if pd.notna(headers[col_idx]) else f"KK_{col_idx-1}"
-                    
                     if col_name == "nan": continue
-
                     if pd.notna(val) and val > 0:
-                        data_rows.append({
-                            "Kategoria": kategoria,
-                            "Selite": selite,
-                            "Kuukausi": col_name,
-                            "Summa": round(val, 2)
-                        })
+                        data_rows.append({"Kategoria": kategoria, "Selite": selite, "Kuukausi": col_name, "Summa": round(val, 2)})
 
         process_section(tulot_idx + 2, menot_idx, "Tulo")
         process_section(menot_idx + 2, len(df), "Meno")
-        
         return pd.DataFrame(data_rows)
-
     except Exception as e:
-        st.error(f"Virhe tiedoston luvussa: {e}")
         return pd.DataFrame()
 
 # --- SIMULOINTI ---
@@ -77,172 +60,103 @@ def laske_tulevaisuus(aloitussumma, kk_saasto, korko_pros, vuodet):
         saldo += kk_saasto
         saldo *= (1 + kk_korko)
         if kk % 12 == 0: 
-            data.append({
-                "Vuosi": int(kk / 12),
-                "Yhteensä": round(saldo, 0)
-            })
+            data.append({"Vuosi": int(kk / 12), "Yhteensä": round(saldo, 0)})
     return pd.DataFrame(data)
-    
-    
-# --- ANALYYSI (KORJATTU & SÄILYTETTY PROMPT) ---
+
+# --- ANALYYSI (KORJATTU MALLI & TIEDOT) ---
 def analysoi_talous(df, profiili, data_tyyppi):
     try:
-        # --- 1. PYTHON-LASKENTA (Faktat) ---
-        # HUOM: Uudessa datassa sarake on 'Summa', ei 'Euroa_KK'
         tulot_yht = df[df['Kategoria']=='Tulo']['Summa'].sum()
         menot_yht = df[df['Kategoria']=='Meno']['Summa'].sum()
         
-        # Lasketaan sijoitukset erikseen
         sijoitukset_summa = 0
         sijoitus_keywords = ['sijoitus', 'rahasto', 'osake', 'säästö', 'nordnet', 'op-tuotto', 'ostot', 'etf']
-        
         for _, row in df[df['Kategoria']=='Meno'].iterrows():
              if any(x in str(row['Selite']).lower() for x in sijoitus_keywords):
                  sijoitukset_summa += row['Summa']
 
         jaama = tulot_yht - menot_yht
-        
-        # TODELLINEN SÄÄSTÖKYKY
         todellinen_saasto = jaama + sijoitukset_summa
         
-        # Etsitään Top 3 kulut
         top_menot = df[df['Kategoria']=='Meno'].nlargest(3, 'Summa')
         top_menot_txt = ""
         for _, row in top_menot.iterrows():
             osuus = (row['Summa'] / tulot_yht * 100) if tulot_yht > 0 else 0
             top_menot_txt += f"* **{row['Selite']}**: {row['Summa']:.2f}€ ({osuus:.1f}%)\n"
 
-        # --- 2. ÄLYKÄS TILANNEOHJEISTUS ---
         if jaama < 0 and todellinen_saasto > 0:
-            strategia = "KASSAVIRTA-OPTIMOINTI. Asiakas sijoittaa enemmän kuin hänellä on varaa käteistä. ÄLÄ KÄSE LOPETTAMAAN SIJOITUKSIA KOKONAAN. Neuvo pienentämään sijoituksia tai kuluja vain sen verran (n. 20-50€), että tili ei mene miinukselle."
-            tilanne_teksti = "Investointivetoinen alijäämä (Sijoittaa aggressiivisesti)"
+            strategia = "KASSAVIRTA-OPTIMOINTI. Asiakas sijoittaa enemmän kuin on varaa käteistä."
+            tilanne_teksti = "Investointivetoinen alijäämä"
         elif jaama < 0:
-            strategia = "HÄTÄJARRUTUS. Talous vuotaa oikeasti. Etsi säästökohteita."
+            strategia = "HÄTÄJARRUTUS. Talous vuotaa."
             tilanne_teksti = "Aito alijäämä"
         else:
-            strategia = "VARALLISUUDEN KASVATUS. Ylijäämä on vahva."
+            strategia = "VARALLISUUDEN KASVATUS."
             tilanne_teksti = "Ylijäämäinen"
 
         kpi_stats = f"""
         - TULOT: {tulot_yht:.2f} €
-        - MENOT (sis. sijoitukset): {menot_yht:.2f} €
-        - KASSAVIRTA (Tilin saldo kk lopussa): {jaama:.2f} €
-        - NYKYISET SIJOITUKSET: {sijoitukset_summa:.2f} €
-        - TODELLINEN SÄÄSTÖKYKY: {todellinen_saasto:.2f} €
+        - MENOT: {menot_yht:.2f} €
+        - KASSAVIRTA: {jaama:.2f} €
+        - SIJOITUKSET: {sijoitukset_summa:.2f} €
         """
         
-        # Data tyyppi -ohje
-        tyyppi_ohje = ""
-        if "Toteuma" in data_tyyppi:
-            tyyppi_ohje = "HUOM: Data on TOTEUMA (oikeasti tapahtuneet kulut). Etsi menneisyyden virheet, ylitykset ja vuodot."
-        else:
-            tyyppi_ohje = "HUOM: Data on BUDJETTI (suunnitelma). Arvioi onko suunnitelma realistinen ja onko jotain unohtunut."  
+        # Datatyypin ohjeistus
+        tyyppi_ohje = "HUOM: Data on TOTEUMA (oikeasti tapahtunut)." if "Toteuma" in str(data_tyyppi) else "HUOM: Data on BUDJETTI (suunnitelma)."
 
-        # --- 3. PROMPT ENGINEERING ---
-        # Käytetään 2.5-flash mallia, joka on vakain tällä hetkellä
+        # KÄYTETÄÄN TOIMIVAKSI TODETTUA MALLIA
         model = genai.GenerativeModel('gemini-2.5-flash')
         data_txt = df.to_string(index=False)
 
         prompt = f"""
         ### ROLE
-        Toimit kokeneena varainhoitajana (Certified Financial Planner). Tehtäväsi on analysoida asiakkaan talousdata ja antaa konkreettisia, matemaattisesti perusteltuja suosituksia.
-        Yksinkertainen "hei" riittää aloitukseksi. Ei jaaritteluja, ystävällinen voi olla.
+        Toimit varainhoitajana.
 
         ### CONTEXT
         - Profiili: {profiili['ika']}v, {profiili['suhde']}.
+        - Lapset: {profiili.get('lapset', 0)} kpl.
         - Tilanne: {tilanne_teksti}
-        - Datatyyppi: {tyyppi_ohje}
+        - Datan tyyppi: {tyyppi_ohje}
         
-        ### STRATEGIA (Noudata tätä!)
+        ### STRATEGIA
         {strategia}
 
-        ### FAKTAT (Käytä näitä lukuja):
+        ### FAKTAT:
         {kpi_stats}
 
-        ### SUURIMMAT KULUT:
+        ### TOP KULUT:
         {top_menot_txt}
 
         ### DATA:
         {data_txt}
 
-        ### INSTRUCTIONS
-        1. **70/20/10 Analyysi:** Arvioi menot (Välttämätön / Hupi / Säästö). Huom: Laske nykyiset sijoitukset osaksi Säästö-kategoriaa, vaikka ne ovat teknisesti menoja Excelissä.
-        2. Tunnista vuodot: Etsi kulueriä, jotka poikkeavat merkittävästi profiilin mukaisesta normaalitasosta.
-        3. **Action Plan:** - Jos kyseessä on "Kassavirta-optimointi" (pieni miinus, mutta sijoittaa): Ehdota vain pientä viilausta. Älä ehdota satojen eurojen leikkauksia turhaan!
-           - Tavoite on saada kassavirta ({jaama:.0f}€) juuri ja juuri plussalle ilman suuria uhrauksia.
-
-        VASTAUKSEN RAKENNE (Käytä Markdownia):
-
-        ## 📊 Talouden tilannekuva
-        [Lyhyt, ammattimainen yhteenveto siitä, miltä tilanne näyttää suhteessa 70/20/10-sääntöön. Esim: "Välttämättömät menot vievät 80% tuloista, mikä luo riskiä..."]
-
-        ## 💡 Huomiot kulurakenteesta
-        * **Positiivista:** [Mikä on hyvin?]
-        * **Kehitettävää:** [Missä on suurin vuoto?]
-
-        ## 🔮 Ennuste
-        [Jos kassavirta korjataan nollaan ja sijoitukset ({sijoitukset_summa:.0f}€/kk) jatkuvat, paljonko salkku on 10v päästä (7% tuotto)?]
-        👉 **Potentiaali:** [Summa]
-
-        ## ✅ Tärkein toimenpide
-        [Yksi kirurgisen tarkka toimenpide. Jos puuttuu 16€, etsi se 16€, älä 700€.]
-
-        Lopuksi anna talousrating (1-10) perustellen.
-
-        HUOM: Ole suora, kannustava ja ratkaisukeskeinen. Älä käytä jargonia ilman selitystä.
+        ### TEHTÄVÄ
+        Kirjoita Markdown-analyysi:
+        1. **Tilannekuva**: Ota kantaa elämäntilanteeseen (lapset, ikä) ja lukuihin.
+        2. **Huomiot kuluista**: Mikä on hyvin/huonosti?
+        3. **Ennuste**: Jos nykyinen säästö ({todellinen_saasto:.0f}€) jatkuu 10v (7%), mikä on potti?
+        4. **Toimenpide**: Yksi konkreettinen neuvo.
+        5. **Rating**: Arvosana 1-10.
         """
 
         response = model.generate_content(prompt)
-        
-        # Palautetaan vain teksti, koska app.py odottaa vain yhtä arvoa
         return response.text
 
     except Exception as e:
         return f"Virhe analyysissa: {str(e)}"
 
-# --- LOKITUS ---
-def tallenna_lokiiin(profiili, jaama, tyyppi):
-    uusi_tieto = pd.DataFrame([{
-        "Pvm": datetime.now().strftime("%Y-%m-%d"),
-        "Tyyppi": tyyppi,
-        "Ikä": profiili['ika'],
-        "Status": profiili['suhde'],
-        "Lapset": profiili['lapset'],
-        "Jäämä": round(jaama, 2)
-    }])
-    header = not os.path.exists(LOG_FILE)
-    uusi_tieto.to_csv(LOG_FILE, mode='a', header=header, index=False)
-
 # --- CHAT ---
 def chat_with_data(df, user_question, history):
     try:
         model = genai.GenerativeModel('gemini-2.5-flash')
-        data_summary = df.head(50).to_string(index=False) # Rajoitetaan datamäärää promptissa
-        
+        data_summary = df.head(50).to_string(index=False)
         prompt = f"""
-        Olet TaskuEkonomisti-assistentti. Vastaa lyhyesti suomeksi käyttäjän kysymykseen datan perusteella.
-        DATA (Ote):
-        {data_summary}
-        
+        Vastaa lyhyesti kysymykseen datan perusteella.
+        DATA: {data_summary}
         HISTORIA: {history}
         KYSYMYS: {user_question}
         """
         response = model.generate_content(prompt)
         return response.text
     except:
-        return "Tekoälyyn ei saada yhteyttä."
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        return "Virhe yhteydessä."

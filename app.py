@@ -5,31 +5,89 @@ import plotly.graph_objects as go
 import logiikka
 import os
 
-st.set_page_config(page_title="TaskuEkonomisti 2.0", page_icon="💎", layout="wide", initial_sidebar_state="expanded")
+# --- ASETUKSET ---
+st.set_page_config(
+    page_title="TaskuEkonomisti 2.0",
+    page_icon="💎",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
+# Alustetaan chat-historia
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+# --- CSS TYYLIT ---
+# Ladataan tyylit, jotta saadaan "Ekonomisti" siniseksi
 local_css_path = "style.css"
 if os.path.exists(local_css_path):
     with open(local_css_path) as f:
         st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+else:
+    # Fallback CSS, jos tiedostoa ei ole (varmistetaan että sininen toimii silti)
+    st.markdown("""
+    <style>
+        .main-title { font-size: 3rem; font-weight: 800; color: #0f172a; margin: 0; }
+        .highlight-blue { 
+            color: #2563eb; 
+            background: -webkit-linear-gradient(45deg, #2563eb, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .slogan { font-size: 1.2rem; color: #64748b; margin-bottom: 20px; }
+    </style>
+    """, unsafe_allow_html=True)
 
+# Alustetaan AI
 logiikka.konfiguroi_ai()
 
+# --- SIVUPALKKI ---
 with st.sidebar:
-    st.title("💎 TaskuEko")
+    st.title("💎 Valikko")
     uploaded_file = st.file_uploader("📂 Lataa Excel", type=['xlsx'])
     st.markdown("---")
-    st.caption("Excelissä oltava sarakkeet kuukausille (esim. Tammi, Helmi) trendejä varten.")
+    st.caption("Täytä Exceliin kuukausisarakkeet (esim. Tammikuu, Helmikuu), niin näet trendit.")
 
+# --- OTSIKKO (AINA NÄKYVISSÄ) ---
+# Tämä HTML-lohko tekee "Ekonomisti"-sanasta sinisen
+st.markdown("""
+<div style="text-align: center; margin-top: 10px; margin-bottom: 30px;">
+    <h1 class="main-title">Tasku<span class="highlight-blue">Ekonomisti</span> 💎</h1>
+    <p class="slogan">Ota taloutesi hallintaan datalla ja tekoälyllä</p>
+</div>
+""", unsafe_allow_html=True)
+
+# --- PÄÄNÄKYMÄ ---
+
+# 1. TILANNE: EI TIEDOSTOA (LASKEUTUMISSIVU)
 if not uploaded_file:
-    st.markdown("# Tervetuloa TaskuEkonomistiin 👋")
-    st.info("Aloita lataamalla Excel-tiedosto vasemmalta.")
+    # Keskitetään sisältö kolmella sarakkeella
+    col1, col2, col3 = st.columns([1, 3, 1])
+    
+    with col2:
+        st.markdown("""
+        <div style="text-align: center; background-color: #f8fafc; padding: 20px; border-radius: 10px; border: 1px solid #e2e8f0;">
+            <h3>👋 Tervetuloa!</h3>
+            <p>Tämä työkalu auttaa sinua ymmärtämään rahavirtojasi, ennustamaan vaurastumista ja löytämään säästökohteita tekoälyn avulla.</p>
+            <p><strong>Aloita lataamalla Excel-tiedosto vasemmalta valikosta.</strong></p>
+        </div>
+        <br>
+        """, unsafe_allow_html=True)
+
+        # Video
+        video_path = "esittely.mp4"
+        if os.path.exists(video_path):
+            st.video(video_path, autoplay=True, muted=True)
+        else:
+            # Fallback video verkosta
+            st.video("https://videos.pexels.com/video-files/3129671/3129671-hd_1920_1080_30fps.mp4", autoplay=True, muted=True)
+
+# 2. TILANNE: TIEDOSTO LADATTU (DASHBOARD)
 else:
     df_raw = logiikka.lue_kaksiosainen_excel(uploaded_file)
     
     if not df_raw.empty:
+        # Lasketaan keskiarvot per kuukausi
         kk_lkm = df_raw['Kuukausi'].nunique()
         df_avg = df_raw.groupby(['Kategoria', 'Selite'])['Summa'].sum().reset_index()
         df_avg['Summa'] = df_avg['Summa'] / kk_lkm 
@@ -38,6 +96,7 @@ else:
         menot_avg = df_avg[df_avg['Kategoria']=='Meno']['Summa'].sum()
         jaama_avg = tulot_avg - menot_avg
 
+        # KPI MITTARIT
         with st.container(border=True):
             c1, c2, c3, c4 = st.columns(4)
             c1.metric("Data", f"{kk_lkm} kk keskiarvo")
@@ -47,8 +106,8 @@ else:
 
         st.write("") 
 
-        # --- JAETUT VÄLILEHDET: CHAT JA ANALYYSI ERIKSEEN ---
-        tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Yleiskuva", "📈 Trendit", "🔮 Simulaattori", "💬 Chat", "📝 Analyysi"])
+        # VÄLILEHDET
+        tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Yleiskuva", "📈 Trendit", "📈 Varallisuusennuste", "💬 Chat", "📝 Analyysi"])
 
         # TAB 1: YLEISKUVA
         with tab1:
@@ -98,55 +157,36 @@ else:
             else:
                 st.warning("Trendit vaativat dataa useammalta kuukaudelta.")
 
-      # TAB 3: SIMULAATTORI (PINOTTU GRAAFI)
+        # TAB 3: SIMULAATTORI (VARALLISUUSENNUSTE)
         with tab3:
-            st.subheader("💰 Korkoa korolle -laskuri")
-            st.caption("Katso, kuinka vihreä alue (tuotto) alkaa dominoida vuosien saatossa.")
+            st.subheader("📈 Varallisuusennuste")
+            st.caption("Katso, miten 'korkoa korolle' -ilmiö kasvattaa pottiasi vuosien saatossa.")
             
-            c_sim1, c_sim2 = st.columns([1, 2])
-            
+            c_sim1, c_sim2 = st.columns([1,2])
             with c_sim1:
-                # Otetaan oletusarvoksi laskettu jäämä, mutta vähintään 50€
                 oletus_saasto = float(max(jaama_avg, 50.0))
-                
                 kk_saasto = st.slider("Kuukausisäästö (€)", 0.0, 3000.0, oletus_saasto, step=10.0)
-                vuodet = st.slider("Sijoitusaika (vuotta)", 1, 50, 20)
-                korko = st.slider("Oletettu vuosituotto (%)", 1.0, 15.0, 7.0)
-                alkupotti = st.number_input("Alkupääoma / Nykyiset sijoitukset (€)", 0, 1000000, 0, step=1000)
+                vuodet = st.slider("Aika (v)", 1, 40, 20)
+                korko = st.slider("Tuotto %", 1.0, 15.0, 7.0)
+                alkupotti = st.number_input("Alkupääoma (€)", 0, 1000000, 0, step=1000)
             
             with c_sim2:
-                # Lasketaan data
                 df_sim = logiikka.laske_tulevaisuus(alkupotti, kk_saasto, korko, vuodet)
                 
-                # Otetaan viimeisen vuoden luvut talteen
+                # Metrics
                 loppusumma = df_sim.iloc[-1]['Yhteensä']
                 loppu_tuotto = df_sim.iloc[-1]['Tuotto']
-                loppu_oma = df_sim.iloc[-1]['Oma pääoma']
+                st.metric(f"Salkun arvo {vuodet}v päästä", f"{loppusumma:,.0f} €", delta=f"Tuottoa: {loppu_tuotto:,.0f} €")
                 
-                # Näytetään lopputulos isosti
-                st.metric(
-                    label=f"Salkun arvo {vuodet} vuoden päästä", 
-                    value=f"{loppusumma:,.0f} €", 
-                    delta=f"Josta tuottoa: {loppu_tuotto:,.0f} €"
-                )
-                
-                # Piirretään PINOTTU aluekaavio (Stacked Area Chart)
+                # Pinottu graafi
                 fig_area = px.area(
-                    df_sim, 
-                    x="Vuosi", 
-                    y=["Oma pääoma", "Tuotto"], # Tässä järjestyksessä: Pääoma alle, tuotto päälle
-                    title="Varallisuuden kehitys",
-                    color_discrete_map={
-                        "Oma pääoma": "#94a3b8",  # Harmaa (Slate-400)
-                        "Tuotto": "#22c55e"       # Vihreä (Green-500)
-                    }
+                    df_sim, x="Vuosi", y=["Oma pääoma", "Tuotto"],
+                    color_discrete_map={"Oma pääoma": "#94a3b8", "Tuotto": "#22c55e"}
                 )
-                
-                # Hienosäätö: Työkaluvihje näyttää summan
                 fig_area.update_layout(hovermode="x unified", yaxis_title="Euroa (€)")
                 st.plotly_chart(fig_area, use_container_width=True)
 
-        # TAB 4: CHAT (NYT OMA SIVU)
+        # TAB 4: CHAT
         with tab4:
             st.subheader("💬 Kysy datalta")
             for msg in st.session_state.messages:
@@ -163,10 +203,10 @@ else:
                         st.markdown(resp)
                         st.session_state.messages.append({"role": "assistant", "content": resp})
 
-        # TAB 5: ANALYYSI (PARANNETTU)
+        # TAB 5: ANALYYSI
         with tab5:
             st.subheader("📝 Henkilökohtainen varainhoitosuunnitelma")
-            st.markdown("Täytä taustatiedot huolellisesti. Mitä enemmän kerrot, sitä paremman analyysin saat.")
+            st.markdown("Täytä taustatiedot huolellisesti.")
             
             with st.container(border=True):
                 with st.form("analyysi_form"):
@@ -176,53 +216,23 @@ else:
                         ika = st.number_input("Oma ikäsi", 18, 99, 37)
                         lapset = st.number_input("Lasten määrä taloudessa", 0, 10, 2)
                     with c_a2:
-                        # Tarkempi status-valikko
-                        status = st.selectbox("Elämäntilanne", [
-                            "Sinkku", 
-                            "Parisuhteessa (yhteistalous)", 
-                            "Parisuhteessa (erilliset taloudet)", 
-                            "Lapsiperhe (2 aikuista)", 
-                            "Yksinhuoltaja"
-                        ], index=3) # Oletus: Lapsiperhe
+                        status = st.selectbox("Elämäntilanne", ["Sinkku", "Parisuhteessa (yhteistalous)", "Parisuhteessa (erilliset)", "Lapsiperhe", "Yksinhuoltaja"], index=3)
                         data_tyyppi = st.radio("Datan lähde", ["Toteuma (Tiliote)", "Suunnitelma (Budjetti)"])
                     
                     st.markdown("---")
-                    st.markdown("**2. Taloudelliset tavoitteet**")
-                    
-                    tavoite = st.selectbox("Mikä on tärkein tavoitteesi?", [
-                        "Puskurin kerryttäminen (turva)",
-                        "Asunnon osto / vaihto",
-                        "Velattomuus (lainojen maksu)",
-                        "Taloudellinen riippumattomuus (FIRE)",
-                        "Elintason nosto (haluan kuluttaa enemmän)",
-                        "Sijoitussalkun kasvatus"
-                    ])
-                    
-                    varallisuus = st.number_input("Arvioitu nettovarallisuus (€)", 
-                                                  help="Kaikki omaisuus (asunnot, sijoitukset) miinus kaikki velat.",
-                                                  value=10000, step=1000)
+                    st.markdown("**2. Tavoitteet**")
+                    tavoite = st.selectbox("Mikä on tärkein tavoitteesi?", ["Puskurin kerryttäminen", "Asunnon osto", "Velattomuus", "FIRE (Riippumattomuus)", "Elintason nosto", "Sijoitusten kasvatus"])
+                    varallisuus = st.number_input("Nettovarallisuus (€)", value=10000, step=1000, help="Omaisuus - Velat")
                     
                     st.write("")
                     submit_btn = st.form_submit_button("✨ Pyydä Varainhoitajan Analyysi", type="primary", use_container_width=True)
             
             if submit_btn:
                 with st.spinner("Tekoäly laatii strategiaa..."):
-                    # Kootaan rikkaampi profiili
-                    profiili = {
-                        "ika": ika, 
-                        "suhde": status, 
-                        "lapset": lapset,
-                        "tavoite": tavoite,
-                        "varallisuus": varallisuus
-                    }
-                    
+                    profiili = {"ika": ika, "suhde": status, "lapset": lapset, "tavoite": tavoite, "varallisuus": varallisuus}
                     analyysi_teksti = logiikka.analysoi_talous(df_avg, profiili, data_tyyppi)
                     
                     st.markdown("---")
-                    st.markdown(f"""
-                    <div style="background-color:#f8fafc; padding:30px; border-radius:12px; border:1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);">
-                        {analyysi_teksti}
-                    </div>
-                    """, unsafe_allow_html=True)
-
-
+                    st.markdown(f"""<div style="background-color:#f8fafc; padding:30px; border-radius:12px; border:1px solid #e2e8f0;">{analyysi_teksti}</div>""", unsafe_allow_html=True)
+    else:
+        st.error("Virhe datan luvussa.")

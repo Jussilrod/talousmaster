@@ -216,7 +216,7 @@ def tallenna_lokiiin(profiili, jaama, tyyppi):
 # --- CHAT ---
 def chat_with_data(df, user_question, history):
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         data_summary = df.head(50).to_string(index=False) # Rajoitetaan datamäärää promptissa
         
         prompt = f"""
@@ -231,6 +231,7 @@ def chat_with_data(df, user_question, history):
         return response.text
     except:
         return "Tekoälyyn ei saada yhteyttä."
+
 
 
 

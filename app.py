@@ -1,183 +1,171 @@
 import streamlit as st
 import pandas as pd
-import google.generativeai as genai
+import plotly.express as px
+import plotly.graph_objects as go
+import logiikka
 import os
-from datetime import datetime
-from fpdf import FPDF
 
-# --- KONFIGURAATIO ---
-LOG_FILE = "talousdata_logi.csv"
+# --- ASETUKSET ---
+st.set_page_config(
+    page_title="TaskuEkonomisti 2.0",
+    page_icon="💎",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-def konfiguroi_ai():
-    try:
-        api_key = os.getenv("GOOGLE_API_KEY")
-        if not api_key and "GOOGLE_API_KEY" in st.secrets:
-            api_key = st.secrets["GOOGLE_API_KEY"]
+# Alustetaan chat-historia muistiin, jos ei ole vielä
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+local_css_path = "style.css"
+if os.path.exists(local_css_path):
+    with open(local_css_path) as f:
+        st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+
+logiikka.konfiguroi_ai()
+
+# --- SIVUPALKKI ---
+with st.sidebar:
+    st.title("💎 TaskuEko")
+    uploaded_file = st.file_uploader("📂 Lataa Excel", type=['xlsx'])
+    st.markdown("---")
+    st.info("Tukee nyt useita kuukausia! Täytä Exceliin sarakkeet C, D, E... eri kuukausille.")
+
+# --- PÄÄNÄKYMÄ ---
+if not uploaded_file:
+    st.markdown("# Tervetuloa TaskuEkonomistiin 👋")
+    st.write("Lataa Excel vasemmalta aloittaaksesi.")
+else:
+    # Ladataan data
+    df_raw = logiikka.lue_kaksiosainen_excel(uploaded_file)
+    
+    if not df_raw.empty:
+        # Lasketaan KPI:t (Summataan kaikki kuukaudet ja jaetaan kuukausien määrällä = keskiarvo/kk)
+        kk_lkm = df_raw['Kuukausi'].nunique()
+        df_avg = df_raw.groupby(['Kategoria', 'Selite'])['Summa'].sum().reset_index()
+        df_avg['Summa'] = df_avg['Summa'] / kk_lkm # Keskiarvo per kk
+        
+        tulot_avg = df_avg[df_avg['Kategoria']=='Tulo']['Summa'].sum()
+        menot_avg = df_avg[df_avg['Kategoria']=='Meno']['Summa'].sum()
+        jaama_avg = tulot_avg - menot_avg
+
+        # KPI Metrics
+        with st.container(border=True):
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("Analysoitu", f"{kk_lkm} kk")
+            c2.metric("Tulot (keskim.)", f"{tulot_avg:,.0f} €")
+            c3.metric("Menot (keskim.)", f"{menot_avg:,.0f} €", delta="-")
+            c4.metric("Jäämä (keskim.)", f"{jaama_avg:,.0f} €", delta=f"{jaama_avg:,.0f} €")
+
+        # --- NAVIGAATIO ---
+        tab1, tab2, tab3, tab4 = st.tabs(["📊 Yleiskuva", "📈 Trendit", "🔮 Simulaattori", "💬 Chat & Raportti"])
+
+        # TAB 1: YLEISKUVA (Keskiarvot)
+        with tab1:
+            st.subheader("Keskimääräinen kulurakenne")
+            col_1, col_2 = st.columns(2)
             
-        if api_key:
-            genai.configure(api_key=api_key)
-            return True
-        return False
-    except:
-        return False
+            with col_1:
+                # Sunburst
+                menot_df = df_avg[df_avg['Kategoria']=='Meno']
+                fig_sun = px.sunburst(menot_df, path=['Kategoria', 'Selite'], values='Summa', color='Summa')
+                st.plotly_chart(fig_sun, use_container_width=True)
+            
+            with col_2:
+                # Top Kulut Bar Chart
+                top5 = menot_df.sort_values('Summa', ascending=False).head(5)
+                fig_bar = px.bar(top5, x='Summa', y='Selite', orientation='h', title="Top 5 Menot (avg/kk)")
+                st.plotly_chart(fig_bar, use_container_width=True)
 
-# --- UUSI: EXCELIN LUKU AIKASARJANA ---
-@st.cache_data
-def lue_kaksiosainen_excel(file):
-    try:
-        df = pd.read_excel(file, header=None)
-        
-        # Etsitään Tulot ja Menot rivit
-        col_b = df.iloc[:, 1].astype(str)
-        try:
-            tulot_idx = df[col_b.str.contains("Tulot", na=False, case=False)].index[0]
-            menot_idx = df[col_b.str.contains("Menot", na=False, case=False)].index[0]
-        except IndexError:
-            return pd.DataFrame()
-
-        # Tunnistetaan sarakkeet (C, D, E... eli indeksit 2, 3, 4...)
-        # Oletetaan, että rivillä (tulot_idx - 1) on otsikot: "Selite", "Tammikuu", "Helmikuu"...
-        header_row_idx = tulot_idx - 1 if tulot_idx > 0 else 0
-        headers = df.iloc[header_row_idx]
-        
-        # Kerätään aikasarjadata
-        data_rows = []
-
-        def process_section(start_idx, end_idx, kategoria):
-            section = df.iloc[start_idx:end_idx].copy()
-            for _, row in section.iterrows():
-                selite = str(row[1])
-                if "Yhteensä" in selite or selite == "nan": continue
+        # TAB 2: TRENDIT (AIKASARJA) - UUSI!
+        with tab2:
+            st.subheader("Talouden kehitys kuukausittain")
+            
+            if kk_lkm > 1:
+                # 1. Viivagraafi: Tulot vs Menot
+                df_trend = df_raw.groupby(['Kuukausi', 'Kategoria'])['Summa'].sum().reset_index()
                 
-                # Käydään läpi kaikki sarakkeet indeksistä 2 eteenpäin
-                for col_idx in range(2, df.shape[1]):
-                    val = pd.to_numeric(row[col_idx], errors='coerce')
-                    col_name = str(headers[col_idx]) if pd.notna(headers[col_idx]) else f"KK_{col_idx-1}"
+                # Järjestetään kuukaudet (tämä vaatisi oikeasti datetime-logiikkaa, mutta oletetaan excel järjestys)
+                # Yksinkertainen visualisointi:
+                fig_line = px.line(df_trend, x='Kuukausi', y='Summa', color='Kategoria', markers=True,
+                                  title="Tulot ja Menot ajan yli")
+                st.plotly_chart(fig_line, use_container_width=True)
+                
+                st.divider()
+                
+                # 2. Stacked Bar: Mihin raha meni eri kuukausina?
+                valittu_kategoria = st.selectbox("Tarkastele kategoriaa:", ["Meno", "Tulo"])
+                df_cat_trend = df_raw[df_raw['Kategoria'] == valittu_kategoria]
+                
+                fig_stack = px.bar(df_cat_trend, x='Kuukausi', y='Summa', color='Selite', 
+                                  title=f"{valittu_kategoria}erien jakautuminen")
+                st.plotly_chart(fig_stack, use_container_width=True)
+            else:
+                st.info("💡 Lataa Excel, jossa on sarakkeita useammalle kuukaudelle (esim. Tammi, Helmi), niin näet trendikäyrät tässä.")
+
+        # TAB 3: SIMULAATTORI (Vanha tuttu)
+        with tab3:
+            st.subheader("Miljonääri-simulaattori")
+            s_col1, s_col2 = st.columns([1,2])
+            with s_col1:
+                kk_saasto = st.slider("Säästö (€/kk)", 0.0, 2000.0, float(max(jaama_avg, 50.0)), step=10.0)
+                vuodet = st.slider("Vuodet", 1, 40, 20)
+                korko = st.slider("Tuotto %", 1.0, 15.0, 7.0)
+            with s_col2:
+                df_sim = logiikka.laske_tulevaisuus(0, kk_saasto, korko, vuodet)
+                fig_area = px.area(df_sim, x="Vuosi", y="Yhteensä", title=f"Potti: {df_sim.iloc[-1]['Yhteensä']:,.0f} €")
+                st.plotly_chart(fig_area, use_container_width=True)
+
+        # TAB 4: CHAT & RAPORTTI - UUSI!
+        with tab4:
+            c_left, c_right = st.columns([2, 1])
+            
+            # CHAT
+            with c_left:
+                st.subheader("💬 Kysy dataltasi")
+                
+                # Näytä historia
+                for msg in st.session_state.messages:
+                    with st.chat_message(msg["role"]):
+                        st.markdown(msg["content"])
+                
+                # Input
+                if prompt := st.chat_input("Esim: 'Mihin käytin eniten rahaa tammikuussa?'"):
+                    # 1. Käyttäjän viesti
+                    st.session_state.messages.append({"role": "user", "content": prompt})
+                    with st.chat_message("user"):
+                        st.markdown(prompt)
                     
-                    # Jos sarakeotsikko on tyhjä/nan, ei oteta
-                    if col_name == "nan": continue
+                    # 2. AI vastaus
+                    with st.chat_message("assistant"):
+                        with st.spinner("Tutkin Exceliä..."):
+                            response_text = logiikka.chat_with_data(df_raw, prompt, st.session_state.messages)
+                            st.markdown(response_text)
+                            st.session_state.messages.append({"role": "assistant", "content": response_text})
+            
+            # RAPORTTI
+            with c_right:
+                st.subheader("📄 Lataa raportti")
+                with st.container(border=True):
+                    st.write("Luo virallinen yhteenveto pankkia tai arkistointia varten.")
+                    
+                    # Pienet inputit raporttia varten
+                    r_ika = st.number_input("Ikä", 18, 100, 30, key="r_ika")
+                    r_status = st.selectbox("Status", ["Yksin", "Perhe"], key="r_stat")
+                    
+                    if st.button("Luo PDF-analyysi"):
+                        profiili = {"ika": r_ika, "suhde": r_status}
+                        analyysi_txt, _ = logiikka.analysoi_talous(df_raw, profiili, "Raportti")
+                        
+                        pdf_data = logiikka.luo_pdf_raportti(df_avg, analyysi_txt, profiili)
+                        
+                        st.download_button(
+                            label="⬇️ Lataa PDF",
+                            data=pdf_data,
+                            file_name="taskuekonomisti_raportti.pdf",
+                            mime="application/pdf",
+                            type="primary"
+                        )
 
-                    if pd.notna(val) and val > 0:
-                        data_rows.append({
-                            "Kategoria": kategoria,
-                            "Selite": selite,
-                            "Kuukausi": col_name, # Esim. "Tammikuu"
-                            "Summa": round(val, 2)
-                        })
-
-        # Käsitellään osiot
-        process_section(tulot_idx + 2, menot_idx, "Tulo")
-        process_section(menot_idx + 2, len(df), "Meno")
-        
-        return pd.DataFrame(data_rows)
-
-    except Exception as e:
-        st.error(f"Virhe: {e}")
-        return pd.DataFrame()
-
-# --- SIMULOINTI ---
-def laske_tulevaisuus(aloitussumma, kk_saasto, korko_pros, vuodet):
-    data = []
-    saldo = aloitussumma
-    kk_korko = (korko_pros / 100) / 12
-    for kk in range(vuodet * 12):
-        saldo += kk_saasto
-        saldo *= (1 + kk_korko)
-        if kk % 12 == 0: 
-            data.append({
-                "Vuosi": int(kk / 12),
-                "Oma pääoma": round(aloitussumma + (kk_saasto * kk), 0),
-                "Tuotto": round(saldo - (aloitussumma + (kk_saasto * kk)), 0),
-                "Yhteensä": round(saldo, 0)
-            })
-    return pd.DataFrame(data)
-
-# --- ANALYYSI ---
-def analysoi_talous(df, profiili, data_tyyppi):
-    try:
-        # Lasketaan keskiarvot jos on useita kuukausia
-        df_aggr = df.groupby(['Kategoria', 'Selite'])['Summa'].mean().reset_index()
-        tulot_yht = df_aggr[df_aggr['Kategoria']=='Tulo']['Summa'].sum()
-        menot_yht = df_aggr[df_aggr['Kategoria']=='Meno']['Summa'].sum()
-        jaama = tulot_yht - menot_yht
-        
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        
-        prompt = f"""
-        Toimi varainhoitajana. Profiili: {profiili}. Data ({data_tyyppi}):
-        Tulot avg: {tulot_yht}€, Menot avg: {menot_yht}€.
-        Data: {df_aggr.to_string()}
-        
-        Analysoi lyhyesti:
-        1. Tilannekuva
-        2. Top kulut
-        3. Yksi säästövinkki
-        """
-        response = model.generate_content(prompt)
-        return response.text, jaama
-    except Exception as e:
-        return "Virhe analyysissa.", 0
-
-# --- UUSI: CHAT-TOIMINTO ---
-def chat_with_data(df, user_question, history):
-    try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        
-        # Tiivistetään data promptiin
-        data_summary = df.to_string(index=False)
-        
-        prompt = f"""
-        Olet avulias talousassistentti TaskuEkonomisti-sovelluksessa.
-        Käytössäsi on käyttäjän talousdata alla. Vastaa käyttäjän kysymykseen ytimekkäästi suomeksi.
-        Jos kysymys ei liity talouteen, ohjaa kohteliaasti takaisin aiheeseen.
-        
-        DATA:
-        {data_summary}
-        
-        KESKUSTELUHISTORIA:
-        {history}
-        
-        KÄYTTÄJÄN KYSYMYS: {user_question}
-        """
-        
-        response = model.generate_content(prompt)
-        return response.text
-    except Exception as e:
-        return "En pystynyt yhdistämään tekoälyyn juuri nyt."
-
-# --- UUSI: PDF RAPORTTI ---
-class PDF(FPDF):
-    def header(self):
-        self.set_font('Arial', 'B', 15)
-        self.cell(0, 10, 'TaskuEkonomisti - Raportti', 0, 1, 'C')
-        self.ln(10)
-
-def luo_pdf_raportti(df, ai_analyysi, profiili):
-    pdf = PDF()
-    pdf.add_page()
-    pdf.set_font("Arial", size=12)
-    
-    # 1. Profiili
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 10, f"Analyysi: {profiili['ika']}v, {profiili['suhde']}", 0, 1)
-    pdf.set_font("Arial", size=12)
-    
-    # 2. Luvut
-    tulot = df[df['Kategoria']=='Tulo']['Summa'].sum()
-    menot = df[df['Kategoria']=='Meno']['Summa'].sum()
-    pdf.cell(0, 10, f"Tulot yhteensa: {tulot:.2f} EUR", 0, 1)
-    pdf.cell(0, 10, f"Menot yhteensa: {menot:.2f} EUR", 0, 1)
-    pdf.cell(0, 10, f"Jaama: {tulot-menot:.2f} EUR", 0, 1)
-    pdf.ln(10)
-    
-    # 3. AI Teksti (Huom: FPDF ei tue kaikkia unicode-merkkejä täydellisesti ilman fonttiasetuksia,
-    # mutta tämä on yksinkertaistettu versio. Korvataan ääkköset varmuuden vuoksi tai hyväksytään perusfontti)
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 10, "Tekoalyn huomiot:", 0, 1)
-    pdf.set_font("Arial", size=10)
-    
-    # Pilkotaan pitkä teksti riveiksi
-    clean_text = ai_analyysi.encode('latin-1', 'replace').decode('latin-1') # Quick fix encodingiin
-    pdf.multi_cell(0, 8, clean_text)
-    
-    return pdf.output(dest='S').encode('latin-1')
+    else:
+        st.error("Datan luku epäonnistui. Tarkista Excel.")

@@ -113,7 +113,7 @@ def analysoi_talous(df_avg, profiili, data_tyyppi):
             status_txt = "Tasapainoilija (Nollatulos)"
 
         # 3. PROMPT ENGINEERING (KORJATTU HENKILÖKUVAUS)
-        model = genai.GenerativeModel('gemini-2.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash-lite')
         
         prompt = f"""
         ### ROLE
@@ -166,7 +166,7 @@ def analysoi_talous(df_avg, profiili, data_tyyppi):
 # --- CHAT ---
 def chat_with_data(df, user_question, history):
     try:
-        model = genai.GenerativeModel('gemini-2.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash-lite')
         data_summary = df.head(50).to_string(index=False)
         prompt = f"""
         Vastaa lyhyesti kysymykseen datan perusteella.
@@ -178,5 +178,6 @@ def chat_with_data(df, user_question, history):
         return response.text
     except:
         return "Virhe yhteydessä."
+
 
 

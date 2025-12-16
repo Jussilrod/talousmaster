@@ -13,6 +13,9 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Määritellään pohjatiedoston nimi
+EXCEL_TEMPLATE_NAME = "talous_pohja.xlsx"
+
 # Alustetaan chat-historia
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -43,12 +46,25 @@ logiikka.konfiguroi_ai()
 with st.sidebar:
     st.title("💎 Valikko")
     
-    # 1. Lataus
-    uploaded_file = st.file_uploader("📂 Lataa Excel", type=['xlsx'])
+    # 1. POHJAN LATAUS (UUSI)
+    # Tarkistetaan onko pohjatiedosto olemassa palvelimella
+    if os.path.exists(EXCEL_TEMPLATE_NAME):
+        with open(EXCEL_TEMPLATE_NAME, "rb") as file:
+            st.download_button(
+                label="📥 Lataa tyhjä Excel-pohja",
+                data=file,
+                file_name="talous_tyokalu.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True
+            )
+        st.markdown("---")
+    
+    # 2. OMAN TIEDOSTON LATAUS
+    uploaded_file = st.file_uploader("📂 Lataa täytetty Excel", type=['xlsx'])
     
     st.markdown("---")
     
-   # 2. Tietoturva (PÄIVITETTY: Varoitus ensin)
+    # 3. TIETOTURVA (PÄIVITETTY)
     with st.expander("🔒 Tietoturva & Yksityisyys", expanded=False):
         st.markdown("""
         <small style="color: #ef4444;">
@@ -88,7 +104,9 @@ if not uploaded_file:
         <div style="text-align: center; background-color: #f8fafc; padding: 20px; border-radius: 10px; border: 1px solid #e2e8f0;">
             <h3>👋 Tervetuloa!</h3>
             <p>Tämä työkalu auttaa sinua ymmärtämään rahavirtojasi, ennustamaan vaurastumista ja löytämään säästökohteita tekoälyn avulla.</p>
-            <p><strong>Aloita lataamalla Excel-tiedosto vasemmalta valikosta.</strong></p>
+            <p><strong>1. Lataa tyhjä pohja sivupalkista.</strong><br>
+            <strong>2. Täytä tietosi.</strong><br>
+            <strong>3. Lataa täytetty tiedosto takaisin.</strong></p>
         </div>
         <br>
         """, unsafe_allow_html=True)
@@ -127,7 +145,7 @@ else:
         tab1, tab2, tab3, tab4, tab5 = st.tabs([
             "📊 Yleiskuva", 
             "📈 Trendit", 
-            "🔮 Miljonääri-simulaattori", # <--- UUSI NIMI
+            "🔮 Miljonääri-simulaattori", 
             "💬 Chat", 
             "📝 Analyysi"
         ])
@@ -180,7 +198,7 @@ else:
             else:
                 st.warning("Trendit vaativat dataa useammalta kuukaudelta. Täytä Exceliin sarakkeet esim: Tammikuu, Helmikuu...")
 
-        # TAB 3: VARALLISUUSENNUSTE
+        # TAB 3: SIMULAATTORI
         with tab3:
             st.subheader("🔮 Miljonääri-simulaattori")
             st.caption("Visualisoi korkoa korolle -ilmiön voima. Vihreä alue kuvaa sijoitusten tuottoa.")
@@ -257,8 +275,3 @@ else:
                     st.markdown(f"""<div style="background-color:#f8fafc; padding:30px; border-radius:12px; border:1px solid #e2e8f0;">{analyysi_teksti}</div>""", unsafe_allow_html=True)
     else:
         st.error("Virhe datan luvussa.")
-
-
-
-
-

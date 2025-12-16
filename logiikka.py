@@ -51,16 +51,37 @@ def lue_kaksiosainen_excel(file):
     except Exception as e:
         return pd.DataFrame()
 
-# --- SIMULOINTI ---
+# --- SIMULOINTI (PÄIVITETTY: EROTTELEE PÄÄOMAN JA TUOTON) ---
 def laske_tulevaisuus(aloitussumma, kk_saasto, korko_pros, vuodet):
     data = []
     saldo = aloitussumma
+    oma_paaoma = aloitussumma # Seurataan paljonko on talletettu itse taskusta
+    
     kk_korko = (korko_pros / 100) / 12
-    for kk in range(vuodet * 12):
+    
+    # Lisätään alkupiste (Vuosi 0)
+    data.append({
+        "Vuosi": 0,
+        "Oma pääoma": aloitussumma,
+        "Tuotto": 0,
+        "Yhteensä": aloitussumma
+    })
+
+    for kk in range(1, vuodet * 12 + 1):
         saldo += kk_saasto
+        oma_paaoma += kk_saasto
         saldo *= (1 + kk_korko)
+        
+        # Tallennetaan data kerran vuodessa
         if kk % 12 == 0: 
-            data.append({"Vuosi": int(kk / 12), "Yhteensä": round(saldo, 0)})
+            tuotto = saldo - oma_paaoma
+            data.append({
+                "Vuosi": int(kk / 12),
+                "Oma pääoma": round(oma_paaoma, 0),
+                "Tuotto": round(tuotto, 0),
+                "Yhteensä": round(saldo, 0)
+            })
+            
     return pd.DataFrame(data)
 
 # --- ANALYYSI (PARANNETTU KONTEKSTI) ---
@@ -157,4 +178,5 @@ def chat_with_data(df, user_question, history):
         return response.text
     except:
         return "Virhe yhteydessä."
+
 

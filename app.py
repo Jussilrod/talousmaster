@@ -127,7 +127,7 @@ else:
         tab1, tab2, tab3, tab4, tab5 = st.tabs([
             "📊 Yleiskuva", 
             "📈 Trendit", 
-            "📈 Varallisuusennuste", # <--- UUSI NIMI
+            "🔮 Miljonääri-simulaattori, # <--- UUSI NIMI
             "💬 Chat", 
             "📝 Analyysi"
         ])
@@ -182,7 +182,7 @@ else:
 
         # TAB 3: VARALLISUUSENNUSTE
         with tab3:
-            st.subheader("📈 Varallisuusennuste")
+            st.subheader("🔮 Miljonääri-simulaattori")
             st.caption("Visualisoi korkoa korolle -ilmiön voima. Vihreä alue kuvaa sijoitusten tuottoa.")
             
             c_sim1, c_sim2 = st.columns([1,2])
@@ -257,6 +257,7 @@ else:
                     st.markdown(f"""<div style="background-color:#f8fafc; padding:30px; border-radius:12px; border:1px solid #e2e8f0;">{analyysi_teksti}</div>""", unsafe_allow_html=True)
     else:
         st.error("Virhe datan luvussa.")
+
 
 
 

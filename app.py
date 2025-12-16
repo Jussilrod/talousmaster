@@ -127,28 +127,65 @@ else:
                         st.markdown(resp)
                         st.session_state.messages.append({"role": "assistant", "content": resp})
 
-        # TAB 5: ANALYYSI (NYT OMA SIVU)
+        # TAB 5: ANALYYSI (PARANNETTU)
         with tab5:
-            st.subheader("📝 Syväluotaava Analyysi")
-            st.info("Täytä tiedot, niin tekoäly luo henkilökohtaisen raportin.")
+            st.subheader("📝 Henkilökohtainen varainhoitosuunnitelma")
+            st.markdown("Täytä taustatiedot huolellisesti. Mitä enemmän kerrot, sitä paremman analyysin saat.")
             
-            with st.form("analyysi_form"):
-                c_a1, c_a2 = st.columns(2)
-                with c_a1:
-                    ika = st.number_input("Ikä", 18, 99, 30)
-                    lapset = st.number_input("Lasten määrä", 0, 10, 0)
-                with c_a2:
-                    status = st.selectbox("Parisuhdestatus", ["Yksin", "Parisuhteessa", "Perhe", "Yksinhuoltaja"])
-                    data_tyyppi = st.radio("Datan tyyppi", ["Toteuma (Tiliote)", "Suunnitelma (Budjetti)"])
-                
-                submit_btn = st.form_submit_button("✨ Analysoi Nyt", type="primary")
+            with st.container(border=True):
+                with st.form("analyysi_form"):
+                    st.markdown("**1. Perustiedot**")
+                    c_a1, c_a2 = st.columns(2)
+                    with c_a1:
+                        ika = st.number_input("Oma ikäsi", 18, 99, 37)
+                        lapset = st.number_input("Lasten määrä taloudessa", 0, 10, 2)
+                    with c_a2:
+                        # Tarkempi status-valikko
+                        status = st.selectbox("Elämäntilanne", [
+                            "Sinkku", 
+                            "Parisuhteessa (yhteistalous)", 
+                            "Parisuhteessa (erilliset taloudet)", 
+                            "Lapsiperhe (2 aikuista)", 
+                            "Yksinhuoltaja"
+                        ], index=3) # Oletus: Lapsiperhe
+                        data_tyyppi = st.radio("Datan lähde", ["Toteuma (Tiliote)", "Suunnitelma (Budjetti)"])
+                    
+                    st.markdown("---")
+                    st.markdown("**2. Taloudelliset tavoitteet**")
+                    
+                    tavoite = st.selectbox("Mikä on tärkein tavoitteesi?", [
+                        "Puskurin kerryttäminen (turva)",
+                        "Asunnon osto / vaihto",
+                        "Velattomuus (lainojen maksu)",
+                        "Taloudellinen riippumattomuus (FIRE)",
+                        "Elintason nosto (haluan kuluttaa enemmän)",
+                        "Sijoitussalkun kasvatus"
+                    ])
+                    
+                    varallisuus = st.number_input("Arvioitu nettovarallisuus (€)", 
+                                                  help="Kaikki omaisuus (asunnot, sijoitukset) miinus kaikki velat.",
+                                                  value=10000, step=1000)
+                    
+                    st.write("")
+                    submit_btn = st.form_submit_button("✨ Pyydä Varainhoitajan Analyysi", type="primary", use_container_width=True)
             
             if submit_btn:
-                with st.spinner("Analysoidaan..."):
-                    profiili = {"ika": ika, "suhde": status, "lapset": lapset}
+                with st.spinner("Tekoäly laatii strategiaa..."):
+                    # Kootaan rikkaampi profiili
+                    profiili = {
+                        "ika": ika, 
+                        "suhde": status, 
+                        "lapset": lapset,
+                        "tavoite": tavoite,
+                        "varallisuus": varallisuus
+                    }
+                    
                     analyysi_teksti = logiikka.analysoi_talous(df_avg, profiili, data_tyyppi)
                     
                     st.markdown("---")
-                    st.markdown(f"""<div style="background-color:#f8fafc; padding:25px; border-radius:10px; border:1px solid #e2e8f0;">{analyysi_teksti}</div>""", unsafe_allow_html=True)
-    else:
-        st.error("Virhe datan luvussa.")
+                    st.markdown(f"""
+                    <div style="background-color:#f8fafc; padding:30px; border-radius:12px; border:1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05);">
+                        {analyysi_teksti}
+                    </div>
+                    """, unsafe_allow_html=True)
+

@@ -1,184 +1,183 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-import logiikka
+import google.generativeai as genai
 import os
+from datetime import datetime
+from fpdf import FPDF
 
-# --- ASETUKSET ---
-st.set_page_config(
-    page_title="TaskuEkonomisti",
-    page_icon="💎",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# --- KONFIGURAATIO ---
+LOG_FILE = "talousdata_logi.csv"
 
-EXCEL_TEMPLATE_NAME = "talous_pohja.xlsx"
+def konfiguroi_ai():
+    try:
+        api_key = os.getenv("GOOGLE_API_KEY")
+        if not api_key and "GOOGLE_API_KEY" in st.secrets:
+            api_key = st.secrets["GOOGLE_API_KEY"]
+            
+        if api_key:
+            genai.configure(api_key=api_key)
+            return True
+        return False
+    except:
+        return False
 
-# --- TYYLIT ---
-def local_css(file_name):
-    if os.path.exists(file_name):
-        with open(file_name) as f:
-            st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
-
-local_css("style.css")
-
-# Alustetaan tekoäly
-logiikka.konfiguroi_ai()
-
-# --- SIVUPALKKI (NAVIGAATIO & ASETUKSET) ---
-with st.sidebar:
-    st.markdown("### ⚙️ Hallintapaneeli")
-    
-    # 1. Lataa pohja
-    with open(EXCEL_TEMPLATE_NAME, "rb") as file:
-        st.download_button(
-            label="📥 Lataa Excel-pohja",
-            data=file,
-            file_name="talous_tyokalu.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True
-        )
-    
-    st.markdown("---")
-    
-    # 2. Lataa oma data (Tämä on nyt sivupalkissa, jotta se on aina saatavilla)
-    uploaded_file = st.file_uploader("📂 Lataa oma Excelisi", type=['xlsx'])
-    
-    st.markdown("---")
-    st.info("💡 **Vinkki:** Voit piilottaa tämän sivupalkin nuolesta, kun haluat lisää tilaa graafeille.")
-
-# --- PÄÄNÄKYMÄ ---
-
-# OTSIKKO
-st.markdown("""
-<div style="text-align: center; margin-bottom: 30px;">
-    <h1 class="main-title">Tasku<span class="highlight-blue">Ekonomisti</span> 💎</h1>
-    <p class="slogan">Ota taloutesi hallintaan datalla ja tekoälyllä</p>
-</div>
-""", unsafe_allow_html=True)
-
-# LOGIIKKA: NÄYTETÄÄN ERI SISÄLTÖÄ RIIPPUEN ONKO TIEDOSTO LADATTU
-if not uploaded_file:
-    # --- TILANNE A: EI TIEDOSTOA (Laskeutumissivu) ---
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.markdown('<div style="text-align: center; font-size: 1.2rem; margin-bottom: 20px;">👇 Aloita lataamalla Excel-tiedosto sivupalkista tai katso video</div>', unsafe_allow_html=True)
+# --- UUSI: EXCELIN LUKU AIKASARJANA ---
+@st.cache_data
+def lue_kaksiosainen_excel(file):
+    try:
+        df = pd.read_excel(file, header=None)
         
-        # Video keskitetysti
-        video_path = "esittely.mp4"
-        if os.path.exists(video_path):
-            st.video(video_path, autoplay=True, muted=True)
-        else:
-            st.video("https://videos.pexels.com/video-files/3129671/3129671-hd_1920_1080_30fps.mp4", autoplay=True, muted=True)
+        # Etsitään Tulot ja Menot rivit
+        col_b = df.iloc[:, 1].astype(str)
+        try:
+            tulot_idx = df[col_b.str.contains("Tulot", na=False, case=False)].index[0]
+            menot_idx = df[col_b.str.contains("Menot", na=False, case=False)].index[0]
+        except IndexError:
+            return pd.DataFrame()
 
-else:
-    # --- TILANNE B: DATA LADATTU (Dashboard) ---
-    df_laskettu = logiikka.lue_kaksiosainen_excel(uploaded_file)
-    
-    if not df_laskettu.empty:
-        # Lasketaan KPI-luvut heti kärkeen
-        tulot = df_laskettu[df_laskettu['Kategoria']=='Tulo']['Euroa_KK'].sum()
-        menot = df_laskettu[df_laskettu['Kategoria']=='Meno']['Euroa_KK'].sum()
-        jaama_preview = tulot - menot
+        # Tunnistetaan sarakkeet (C, D, E... eli indeksit 2, 3, 4...)
+        # Oletetaan, että rivillä (tulot_idx - 1) on otsikot: "Selite", "Tammikuu", "Helmikuu"...
+        header_row_idx = tulot_idx - 1 if tulot_idx > 0 else 0
+        headers = df.iloc[header_row_idx]
+        
+        # Kerätään aikasarjadata
+        data_rows = []
 
-        # 1. YLÄOSAN KPI-MITTARIT
-        with st.container(border=True):
-            kpi1, kpi2, kpi3 = st.columns(3)
-            kpi1.metric("Tulot", f"{tulot:,.0f} €")
-            kpi2.metric("Menot", f"{menot:,.0f} €", delta="-menot", delta_color="inverse")
-            kpi3.metric("Jäämä", f"{jaama_preview:,.0f} €", delta=f"{jaama_preview:,.0f} €")
-
-        st.write("") # Tyhjää tilaa
-
-        # 2. VÄLILEHDET (TABS) - TÄMÄ ON SE "HELPPO SIIRTYMÄ"
-        tab_visual, tab_sim, tab_ai = st.tabs([
-            "📊 Visualisointi & Kassavirta", 
-            "🔮 Miljonääri-simulaattori", 
-            "🤖 AI-Analyysi & Suositukset"
-        ])
-
-        # --- TAB 1: VISUALISOINTI ---
-        with tab_visual:
-            st.subheader("Miten rahasi liikkuvat?")
-            
-            # Vesiputouskaavio
-            menot_df = df_laskettu[df_laskettu['Kategoria']=='Meno'].copy().sort_values(by='Euroa_KK', ascending=False)
-            
-            TOP_N = 6
-            if len(menot_df) > TOP_N:
-                top_menot = menot_df.iloc[:TOP_N]
-                muut_summa = menot_df.iloc[TOP_N:]['Euroa_KK'].sum()
-                labels = ["Tulot"] + top_menot['Selite'].tolist() + ["Muut menot", "JÄÄMÄ"]
-                values = [tulot] + [x * -1 for x in top_menot['Euroa_KK'].tolist()] + [muut_summa * -1, 0]
-                measure = ["absolute"] + ["relative"] * (len(top_menot) + 1) + ["total"]
-            else:
-                labels = ["Tulot"] + menot_df['Selite'].tolist() + ["JÄÄMÄ"]
-                values = [tulot] + [x * -1 for x in menot_df['Euroa_KK'].tolist()] + [0]
-                measure = ["absolute"] + ["relative"] * len(menot_df) + ["total"]
-
-            fig_waterfall = go.Figure(go.Waterfall(
-                name = "Kassavirta", orientation = "v", measure = measure, x = labels, y = values,
-                text = [f"{val:,.0f}€" for val in values[:-1]] + [f"{jaama_preview:,.0f}€"],
-                textposition = "outside",
-                connector = {"line":{"color":"rgb(63, 63, 63)"}},
-                decreasing = {"marker":{"color":"#ef4444"}},
-                increasing = {"marker":{"color":"#22c55e"}},
-                totals = {"marker":{"color":"#3b82f6"}}
-            ))
-            fig_waterfall.update_layout(title="Kassavirran vesiputous", height=500, waterfallgap=0.1)
-            st.plotly_chart(fig_waterfall, use_container_width=True)
-            
-            with st.expander("Näytä tarkka kululista"):
-                st.dataframe(menot_df[['Selite', 'Euroa_KK']].style.format({"Euroa_KK": "{:.2f} €"}), use_container_width=True)
-
-        # --- TAB 2: SIMULAATTORI ---
-        with tab_sim:
-            st.subheader("Korkoa korolle -laskuri")
-            st.caption("Pienikin kuukausisäästö kasvaa suureksi ajallaan.")
-            
-            sc1, sc2 = st.columns([1, 2])
-            with sc1:
-                start_val = float(jaama_preview) if jaama_preview > 0 else 50.0
-                kk_saasto_sim = st.slider("Säästösumma (€/kk)", 0.0, 3000.0, start_val, step=10.0)
-                vuodet_sim = st.slider("Aika (vuotta)", 1, 50, 20)
-                tuotto_sim = st.slider("Tuotto-odotus (%)", 1.0, 15.0, 7.0)
-                alkupotti = st.number_input("Nykyinen salkku (€)", 0, 1000000, 0)
-            
-            with sc2:
-                df_sim = logiikka.laske_tulevaisuus(alkupotti, kk_saasto_sim, tuotto_sim, vuodet_sim)
-                loppusumma = df_sim.iloc[-1]['Yhteensä']
-                profitti = df_sim.iloc[-1]['Tuotto']
+        def process_section(start_idx, end_idx, kategoria):
+            section = df.iloc[start_idx:end_idx].copy()
+            for _, row in section.iterrows():
+                selite = str(row[1])
+                if "Yhteensä" in selite or selite == "nan": continue
                 
-                st.metric("Salkun arvo lopussa", f"{loppusumma:,.0f} €", delta=f"+{profitti:,.0f} € korkotuottoa")
-                
-                fig_area = px.area(df_sim, x="Vuosi", y=["Oma pääoma", "Tuotto"], 
-                                  color_discrete_map={"Oma pääoma": "#cbd5e1", "Tuotto": "#22c55e"})
-                fig_area.update_layout(hovermode="x unified")
-                st.plotly_chart(fig_area, use_container_width=True)
-
-        # --- TAB 3: AI ANALYYSI ---
-        with tab_ai:
-            st.subheader("Tekoälyn varainhoitaja")
-            st.caption("Syötä taustatiedot, niin AI etsii säästökohteet puolestasi.")
-            
-            with st.form("ai_form"):
-                ac1, ac2, ac3 = st.columns(3)
-                with ac1: ika = st.number_input("Ikä", 15, 100, 30)
-                with ac2: suhde = st.selectbox("Status", ["Yksin", "Parisuhteessa", "Perheellinen", "YH"])
-                with ac3: lapset = st.number_input("Lapset", 0, 10, 0)
-                
-                data_tyyppi = st.radio("Datan tyyppi", ["Suunnitelma (Budjetti)", "Toteuma (Tiliote)"], horizontal=True)
-                
-                submit_ai = st.form_submit_button("✨ Analysoi talouteni", type="primary", use_container_width=True)
-
-            if submit_ai:
-                with st.spinner('Tekoäly käy läpi tilitietojasi...'):
-                    profiili = {"ika": ika, "suhde": suhde, "lapset": lapset}
-                    vastaus, _ = logiikka.analysoi_talous(df_laskettu, profiili, data_tyyppi)
+                # Käydään läpi kaikki sarakkeet indeksistä 2 eteenpäin
+                for col_idx in range(2, df.shape[1]):
+                    val = pd.to_numeric(row[col_idx], errors='coerce')
+                    col_name = str(headers[col_idx]) if pd.notna(headers[col_idx]) else f"KK_{col_idx-1}"
                     
-                    st.markdown("### 📝 Analyysin tulos")
-                    st.markdown(vastaus)
+                    # Jos sarakeotsikko on tyhjä/nan, ei oteta
+                    if col_name == "nan": continue
 
-    else:
-        st.error("Tiedoston luku epäonnistui. Tarkista, että Excelissä on sarakkeet oikein.")
+                    if pd.notna(val) and val > 0:
+                        data_rows.append({
+                            "Kategoria": kategoria,
+                            "Selite": selite,
+                            "Kuukausi": col_name, # Esim. "Tammikuu"
+                            "Summa": round(val, 2)
+                        })
+
+        # Käsitellään osiot
+        process_section(tulot_idx + 2, menot_idx, "Tulo")
+        process_section(menot_idx + 2, len(df), "Meno")
+        
+        return pd.DataFrame(data_rows)
+
+    except Exception as e:
+        st.error(f"Virhe: {e}")
+        return pd.DataFrame()
+
+# --- SIMULOINTI ---
+def laske_tulevaisuus(aloitussumma, kk_saasto, korko_pros, vuodet):
+    data = []
+    saldo = aloitussumma
+    kk_korko = (korko_pros / 100) / 12
+    for kk in range(vuodet * 12):
+        saldo += kk_saasto
+        saldo *= (1 + kk_korko)
+        if kk % 12 == 0: 
+            data.append({
+                "Vuosi": int(kk / 12),
+                "Oma pääoma": round(aloitussumma + (kk_saasto * kk), 0),
+                "Tuotto": round(saldo - (aloitussumma + (kk_saasto * kk)), 0),
+                "Yhteensä": round(saldo, 0)
+            })
+    return pd.DataFrame(data)
+
+# --- ANALYYSI ---
+def analysoi_talous(df, profiili, data_tyyppi):
+    try:
+        # Lasketaan keskiarvot jos on useita kuukausia
+        df_aggr = df.groupby(['Kategoria', 'Selite'])['Summa'].mean().reset_index()
+        tulot_yht = df_aggr[df_aggr['Kategoria']=='Tulo']['Summa'].sum()
+        menot_yht = df_aggr[df_aggr['Kategoria']=='Meno']['Summa'].sum()
+        jaama = tulot_yht - menot_yht
+        
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        prompt = f"""
+        Toimi varainhoitajana. Profiili: {profiili}. Data ({data_tyyppi}):
+        Tulot avg: {tulot_yht}€, Menot avg: {menot_yht}€.
+        Data: {df_aggr.to_string()}
+        
+        Analysoi lyhyesti:
+        1. Tilannekuva
+        2. Top kulut
+        3. Yksi säästövinkki
+        """
+        response = model.generate_content(prompt)
+        return response.text, jaama
+    except Exception as e:
+        return "Virhe analyysissa.", 0
+
+# --- UUSI: CHAT-TOIMINTO ---
+def chat_with_data(df, user_question, history):
+    try:
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        # Tiivistetään data promptiin
+        data_summary = df.to_string(index=False)
+        
+        prompt = f"""
+        Olet avulias talousassistentti TaskuEkonomisti-sovelluksessa.
+        Käytössäsi on käyttäjän talousdata alla. Vastaa käyttäjän kysymykseen ytimekkäästi suomeksi.
+        Jos kysymys ei liity talouteen, ohjaa kohteliaasti takaisin aiheeseen.
+        
+        DATA:
+        {data_summary}
+        
+        KESKUSTELUHISTORIA:
+        {history}
+        
+        KÄYTTÄJÄN KYSYMYS: {user_question}
+        """
+        
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        return "En pystynyt yhdistämään tekoälyyn juuri nyt."
+
+# --- UUSI: PDF RAPORTTI ---
+class PDF(FPDF):
+    def header(self):
+        self.set_font('Arial', 'B', 15)
+        self.cell(0, 10, 'TaskuEkonomisti - Raportti', 0, 1, 'C')
+        self.ln(10)
+
+def luo_pdf_raportti(df, ai_analyysi, profiili):
+    pdf = PDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+    
+    # 1. Profiili
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(0, 10, f"Analyysi: {profiili['ika']}v, {profiili['suhde']}", 0, 1)
+    pdf.set_font("Arial", size=12)
+    
+    # 2. Luvut
+    tulot = df[df['Kategoria']=='Tulo']['Summa'].sum()
+    menot = df[df['Kategoria']=='Meno']['Summa'].sum()
+    pdf.cell(0, 10, f"Tulot yhteensa: {tulot:.2f} EUR", 0, 1)
+    pdf.cell(0, 10, f"Menot yhteensa: {menot:.2f} EUR", 0, 1)
+    pdf.cell(0, 10, f"Jaama: {tulot-menot:.2f} EUR", 0, 1)
+    pdf.ln(10)
+    
+    # 3. AI Teksti (Huom: FPDF ei tue kaikkia unicode-merkkejä täydellisesti ilman fonttiasetuksia,
+    # mutta tämä on yksinkertaistettu versio. Korvataan ääkköset varmuuden vuoksi tai hyväksytään perusfontti)
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(0, 10, "Tekoalyn huomiot:", 0, 1)
+    pdf.set_font("Arial", size=10)
+    
+    # Pilkotaan pitkä teksti riveiksi
+    clean_text = ai_analyysi.encode('latin-1', 'replace').decode('latin-1') # Quick fix encodingiin
+    pdf.multi_cell(0, 8, clean_text)
+    
+    return pdf.output(dest='S').encode('latin-1')

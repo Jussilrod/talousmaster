@@ -17,19 +17,31 @@ def konfiguroi_ai():
     except:
         return False
         
-# --- SANKEY KAAVIO ---
 def luo_sankey(tulot_summa, df_menot_avg, jaama):
+    # Luodaan selkeät nimet solmuille
     labels = ["Tulot"] + df_menot_avg['Selite'].tolist() + ["Säästöt/Jäämä"]
-    # Lähteet: kaikki menot ja jäämä lähtevät Tulot-solmusta (indeksi 0)
+    
+    # Määritellään mistä mihin raha virtaa
     sources = [0] * (len(df_menot_avg) + 1)
     targets = list(range(1, len(df_menot_avg) + 2))
     values = df_menot_avg['Summa'].tolist() + [max(0, jaama)]
 
     fig = go.Figure(data=[go.Sankey(
-        node=dict(pad=15, thickness=20, line=dict(color="black", width=0.5), label=labels, color="#3b82f6"),
-        link=dict(source=sources, target=targets, value=values, color="rgba(37, 99, 235, 0.2)")
+        node=dict(
+            pad=15, 
+            thickness=20, 
+            line=dict(color="black", width=0.5), 
+            label=labels, 
+            color="#3b82f6"
+        ),
+        link=dict(
+            source=sources, 
+            target=targets, 
+            value=values, 
+            color="rgba(37, 99, 235, 0.2)"
+        )
     )])
-    fig.update_layout(font_size=12)
+    fig.update_layout(title_text="Rahan virtaus: Tulot -> Menot & Säästöt", font_size=12)
     return fig
 
 # --- EXCELIN LUKU ---
@@ -197,6 +209,7 @@ def chat_with_data(df, user_question, history):
         return response.text
     except:
         return "Virhe yhteydessä."
+
 
 
 

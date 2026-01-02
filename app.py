@@ -9,7 +9,7 @@ import os
 st.set_page_config(page_title="TaskuEkonomisti 2.0", page_icon="💎", layout="wide")
 
 if "messages" not in st.session_state: st.session_state.messages = []
-if "varallisuus_tavoite" not in st.session_state: st.session_state.varallisuus_tavoite = 50000.0
+if "varallisuus_tavoite" not in st.session_state: st.session_state.varallisuus_tavoite = 10000.0
 
 EXCEL_TEMPLATE_NAME = "talous_pohja.xlsx"
 
@@ -61,7 +61,7 @@ if not uploaded_file:
         """, unsafe_allow_html=True)
         # MUUTOS: Video korvattu kuvalla
         if os.path.exists("kuva.jpg"):
-            st.image("kuva.jpg", use_container_width=True)
+            st.image("kuva.png", use_container_width=True)
         else:
             st.info("Lisää 'kuva.jpg' projektikansioon nähdäksesi tervetulokuvan.")
 
@@ -114,7 +114,7 @@ else:
                 st.plotly_chart(fig_bar, use_container_width=True)
 
             st.divider()
-            st.subheader("💧 Kassavirta")
+            st.subheader("💰 Kassavirta")
             menot_sorted = df_avg[df_avg['Kategoria']=='Meno'].sort_values(by='Summa', ascending=False)
             labels = ["Tulot"] + menot_sorted['Selite'].tolist() + ["JÄÄMÄ"]
             values = [tulot_avg] + [x * -1 for x in menot_sorted['Summa'].tolist()] + [0]
@@ -207,4 +207,5 @@ else:
                     st.markdown(f'<div style="background-color: white; padding: 30px; border-radius: 12px; border: 1px solid #e2e8f0; color: black;">{res}</div>', unsafe_allow_html=True)
     else:
         st.error("Datan luku epäonnistui.")
+
 

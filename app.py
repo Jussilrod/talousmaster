@@ -126,6 +126,21 @@ else:
                 korko = st.slider("Tuotto %", 1.0, 15.0, 7.0)
                 alkupotti = st.number_input("Alkupääoma (€)", 0, 1000000, 0, step=1000)
 
+            with c_sim2:
+                df_sim = logiikka.laske_tulevaisuus(alkupotti, kk_saasto, korko, vuodet)
+                
+                loppusumma = df_sim.iloc[-1]['Yhteensä']
+                loppu_tuotto = df_sim.iloc[-1]['Tuotto']
+                st.metric(f"Salkun arvo {vuodet}v päästä", f"{loppusumma:,.0f} €", delta=f"Tuottoa: {loppu_tuotto:,.0f} €")
+                
+                # Pinottu aluekaavio
+                fig_area = px.area(
+                    df_sim, x="Vuosi", y=["Oma pääoma", "Tuotto"],
+                    color_discrete_map={"Oma pääoma": "#94a3b8", "Tuotto": "#22c55e"}
+                )
+                fig_area.update_layout(hovermode="x unified", yaxis_title="Euroa (€)")
+                st.plotly_chart(fig_area, use_container_width=True)
+
 
         with tab4:
             st.subheader("💬 Kysy taloudestasi")
@@ -172,6 +187,7 @@ else:
                 prof = {"ika": ika, "suhde": status, "lapset": lapset, "tavoite": tavoite_nimi, "varallisuus": varallisuus}
                 res = logiikka.analysoi_talous(df_avg, prof, "Toteuma")
                 st.markdown(f'<div style="background-color: white; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0;">{res}</div>', unsafe_allow_html=True)
+
 
 
 

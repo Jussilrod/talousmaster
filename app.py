@@ -216,7 +216,16 @@ else:
                 
                 loppusumma = df_sim.iloc[-1]['Yhteensä']
                 loppu_tuotto = df_sim.iloc[-1]['Tuotto']
-                st.metric(f"Salkun arvo {vuodet}v päästä", f"{loppusumma:,.0f} €", delta=f"Tuottoa: {loppu_tuotto:,.0f} €")
+                with st.container():
+                    c1, c2, c3, c4 = st.columns(4)
+                    # Esimerkki yhdestä kortista
+                    c1.markdown(f"""
+                        <div class="kpi-card">
+                            <div class="kpi-label">TULOT (KK)</div>
+                            <div class="kpi-value">{tulot_avg:,.0f} €</div>
+                        </div>
+                    """, unsafe_allow_html=True)
+    # Toista muille sarakkeille...
                 
                 # Pinottu aluekaavio
                 fig_area = px.area(
@@ -275,4 +284,5 @@ else:
                     st.markdown(f"""<div style="background-color:#f8fafc; padding:30px; border-radius:12px; border:1px solid #e2e8f0;">{analyysi_teksti}</div>""", unsafe_allow_html=True)
     else:
         st.error("Virhe datan luvussa.")
+
 

@@ -51,6 +51,10 @@ def luo_sankey(tulot_summa, df_menot_avg, jaama):
     
     # Säädetään korkeutta, jotta se ei ole niin "epätarkka"
     fig.update_layout(height=600, font_size=12)
+
+    # Pakotetaan tekstin renderöinti ilman varjoja (halo: 0)
+    fig.update_traces(textfont_color="black", selector=dict(type='sankey'))
+    
     return fig
 
 # --- EXCELIN LUKU ---
@@ -218,6 +222,7 @@ def chat_with_data(df, user_question, history):
         return response.text
     except:
         return "Virhe yhteydessä."
+
 
 
 

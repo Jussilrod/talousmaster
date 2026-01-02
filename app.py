@@ -8,7 +8,7 @@ import os
 # --- ASETUKSET ---
 st.set_page_config(page_title="TaskuEkonomisti 2.0", page_icon="💎", layout="wide")
 
-# Alustetaan Session State tavoitteille ja chatille
+# Alustetaan Session State
 if "messages" not in st.session_state: st.session_state.messages = []
 if "varallisuus_tavoite" not in st.session_state: st.session_state.varallisuus_tavoite = 50000.0
 
@@ -24,8 +24,8 @@ with st.sidebar:
     st.title("💎 Valikko")
     if os.path.exists("talous_pohja.xlsx"):
         with open("talous_pohja.xlsx", "rb") as file:
-            st.download_button(label="📥 Lataa tyhjä Excel-pohja", data=file, file_name="talous_tyokalu.xlsx", use_container_width=True, key="dl_template")
-    uploaded_file = st.file_uploader("📂 Lataa täytetty Excel", type=['xlsx'], key="file_uploader")
+            st.download_button(label="📥 Lataa tyhjä Excel-pohja", data=file, file_name="talous_tyokalu.xlsx", width='stretch', key="dl_btn")
+    uploaded_file = st.file_uploader("📂 Lataa täytetty Excel", type=['xlsx'], key="uploader")
     st.markdown("---")
     with st.expander("🔒 Tietoturva"):
         st.caption("Data käsitellään vain väliaikaisessa muistissa.")
@@ -34,7 +34,6 @@ with st.sidebar:
 st.markdown('<div style="text-align: center;"><h1 class="main-title">Tasku<span class="highlight-blue">Ekonomisti</span> 💎</h1><p class="slogan">Ota taloutesi hallintaan datalla ja tekoälyllä</p></div>', unsafe_allow_html=True)
 
 if not uploaded_file:
-    # Laskeutumissivu pysyy ennallaan
     col1, col2, col3 = st.columns([1, 3, 1])
     with col2:
         st.markdown('<div style="text-align: center; background-color: #f8fafc; padding: 20px; border-radius: 10px; border: 1px solid #e2e8f0;"><h3>👋 Tervetuloa!</h3><p>Lataa pohja, täytä tiedot ja palauta se tähän.</p></div><br>', unsafe_allow_html=True)
@@ -49,40 +48,32 @@ else:
         menot_avg = df_avg[df_avg['Kategoria']=='Meno']['Summa'].sum()
         jaama_avg = tulot_avg - menot_avg
 
-        # --- KPI KORTIT (Glassmorphism) ---
+        # KPI KORTIT
         c1, c2, c3, c4 = st.columns(4)
-        metrics = [("Analysoitu", f"{kk_lkm} kk"), ("Tulot (kk)", f"{tulot_avg:,.0f}€"), ("Menot (kk)", f"{menot_avg:,.0f}€"), ("Jäämä (kk)", f"{jaama_avg:,.0f}€")]
+        m = [("Analysoitu", f"{kk_lkm} kk"), ("Tulot (kk)", f"{tulot_avg:,.0f}€"), ("Menot (kk)", f"{menot_avg:,.0f}€"), ("Jäämä (kk)", f"{jaama_avg:,.0f}€")]
         for i, col in enumerate([c1, c2, c3, c4]):
-            col.markdown(f'<div class="kpi-card"><div class="kpi-label">{metrics[i][0]}</div><div class="kpi-value">{metrics[i][1]}</div></div>', unsafe_allow_html=True)
+            col.markdown(f'<div class="kpi-card"><div class="kpi-label">{m[i][0]}</div><div class="kpi-value">{m[i][1]}</div></div>', unsafe_allow_html=True)
 
         st.write("")
 
         # --- VÄLILEHDET ---
-        tab1, tab2, tab3, tab4, tab5 = st.tabs([
-            "📊 Yleiskuva", 
-            "📈 Trendit", 
-            "🔮 Simulaattori", 
-            "💬 Chat", 
-            "📝 Analyysi"
-        ])
+        tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Yleiskuva", "📈 Trendit", "🔮 Simulaattori", "💬 Chat", "📝 Analyysi"])
 
-        # TAB 1: YLEISKUVA
         with tab1:
             r1, r2 = st.columns(2)
             with r1:
                 st.subheader("Menojen rakenne")
                 fig_sun = px.sunburst(df_avg[df_avg['Kategoria']=='Meno'], path=['Kategoria', 'Selite'], values='Summa', color='Summa', color_continuous_scale='RdBu_r')
-                st.plotly_chart(fig_sun, use_container_width=True)
+                st.plotly_chart(fig_sun, width='stretch')
             with r2:
                 st.subheader("Top 5 Kulut")
                 top5 = df_avg[df_avg['Kategoria']=='Meno'].sort_values('Summa', ascending=False).head(5)
                 fig_bar = px.bar(top5, x='Summa', y='Selite', orientation='h', text_auto='.0f')
                 fig_bar.update_traces(marker_color='#ef4444')
-                st.plotly_chart(fig_bar, use_container_width=True)
+                st.plotly_chart(fig_bar, width='stretch')
 
             st.divider()
             st.subheader("💧 Kassavirta")
-            
             menot_sorted = df_avg[df_avg['Kategoria']=='Meno'].sort_values(by='Summa', ascending=False)
             TOP_N = 6
             if len(menot_sorted) > TOP_N:
@@ -103,61 +94,47 @@ else:
                 connector={"line":{"color":"#333"}}, decreasing={"marker":{"color":"#ef4444"}},
                 increasing={"marker":{"color":"#22c55e"}}, totals={"marker":{"color":"#3b82f6"}}
             ))
-            st.plotly_chart(fig_water, use_container_width=True)
-
+            st.plotly_chart(fig_water, width='stretch')
 
         with tab2:
-            # Sijoitetaan Sankey tänne trendien alle
             st.divider()
             st.subheader("Rahan virtausanalyysi")
-            st.plotly_chart(logiikka.luo_sankey(tulot_avg, df_avg[df_avg['Kategoria']=='Meno'], jaama_avg), use_container_width=True)
+            st.plotly_chart(logiikka.luo_sankey(tulot_avg, df_avg[df_avg['Kategoria']=='Meno'], jaama_avg), width='stretch')
 
         with tab3:
             st.subheader("🔮 Miljonääri-simulaattori")
-            st.caption("Visualisoi korkoa korolle -ilmiön voima. Vihreä alue kuvaa sijoitusten tuottoa.")
-            
-            c_sim1, c_sim2 = st.columns([1,2])
-            with c_sim1:
-                # 'key'-parametrit on lisätty jokaiseen widgetiin hyppimisen estämiseksi
-                kk_saasto = st.slider("Kuukausisäästö (€)", 0.0, 3000.0, float(max(jaama_avg, 0)), key="sim_kk_slider")
-                vuodet = st.slider("Aika (v)", 1, 40, 20, key="sim_vuo_slider")
-                korko = st.slider("Tuotto %", 1.0, 15.0, 7.0, key="sim_kor_slider")
-                alkupotti = st.number_input("Alkupääoma (€)", 0, 1000000, 0, step=1000, key="sim_potti_input")
-            with cs2:
+            cs1, cs2 = st.columns([1,2]) # TÄSSÄ määritellään cs1 ja cs2
+            with cs1:
+                kk_saasto = st.slider("Kuukausisäästö (€)", 0.0, 3000.0, float(max(jaama_avg, 0)), key="sim_kk_2026")
+                vuodet = st.slider("Aika (v)", 1, 40, 20, key="sim_vuo_2026")
+                korko = st.slider("Tuotto %", 1.0, 15.0, 7.0, key="sim_kor_2026")
+                alkupotti = st.number_input("Alkupääoma (€)", 0, 1000000, 0, step=1000, key="sim_potti_2026")
+            with cs2: # TÄSSÄ käytetään cs2 (virhe korjattu)
                 df_sim = logiikka.laske_tulevaisuus(alkupotti, kk_saasto, korko, vuodet)
                 st.metric(f"Salkun arvo {vuodet}v päästä", f"{df_sim.iloc[-1]['Yhteensä']:,.0f} €")
-                st.plotly_chart(px.area(df_sim, x="Vuosi", y=["Oma pääoma", "Tuotto"]), use_container_width=True)
-        
+                st.plotly_chart(px.area(df_sim, x="Vuosi", y=["Oma pääoma", "Tuotto"]), width='stretch')
+
         with tab4:
             st.subheader("💬 Kysy taloudestasi")
-            
-            # 1. Käytetään container-rakennetta viesteille
             chat_container = st.container()
-            
-            # 2. Pikanapit siistissä rivissä viestien alapuolella mutta ennen syöttöä
             st.markdown("---")
             st.caption("Pikatoiminnot:")
             p1, p2, p3 = st.columns(3)
             p_input = None
-            if p1.button("📊 Kuluanalyysi", use_container_width=True, key="btn_chat_kulu"): p_input = "Analysoi suurimmat kulueryhmäni."
-            if p2.button("🔮 Simuloi +50€", use_container_width=True, key="btn_chat_sim"): p_input = "Miten 50€ lisäsäästö vaikuttaa 20 vuodessa?"
-            if p3.button("📝 Säästösuunnitelma", use_container_width=True, key="btn_chat_plan"): p_input = "Luo minulle säästösuunnitelma."
+            if p1.button("📊 Kuluanalyysi", width='stretch', key="c_kulu"): p_input = "Analysoi suurimmat kulueryhmäni."
+            if p2.button("🔮 Simuloi +50€", width='stretch', key="c_sim"): p_input = "Miten 50€ lisäsäästö vaikuttaa 20 vuodessa?"
+            if p3.button("📝 Säästösuunnitelma", width='stretch', key="c_plan"): p_input = "Luo minulle säästösuunnitelma."
 
-            # 3. Chat-historia containerin sisään
             with chat_container:
                 for msg in st.session_state.messages:
-                    with st.chat_message(msg["role"]):
-                        st.markdown(msg["content"])
+                    with st.chat_message(msg["role"]): st.markdown(msg["content"])
             
-            # 4. Syöttökenttä
             chat_in = st.chat_input("Kirjoita kysymys...")
             actual_input = chat_in or p_input
-            
             if actual_input:
                 st.session_state.messages.append({"role": "user", "content": actual_input})
                 with chat_container:
-                    with st.chat_message("user"):
-                        st.markdown(actual_input)
+                    with st.chat_message("user"): st.markdown(actual_input)
                     with st.chat_message("assistant"):
                         with st.spinner("Mietitään..."):
                             resp = logiikka.chat_with_data(df_raw, actual_input, st.session_state.messages)
@@ -165,41 +142,22 @@ else:
                             st.session_state.messages.append({"role": "assistant", "content": resp})
         
         with tab5:
-            # Poistettu tavoitemittari käyttäjän toiveesta
-            
             with st.form("analyysi_form"):
                 st.markdown("### 📝 Varainhoitajan analyysi")
-                st.caption("Täytä tiedot ja pyydä tekoälyä laatimaan sinulle strategia.")
-                
                 c_a1, c_a2 = st.columns(2)
                 with c_a1:
-                    ika = st.number_input("Ikä", 18, 99, 30, key="ana_ika")
-                    lapset = st.number_input("Lapset", 0, 10, 0, key="ana_lapset")
+                    ika = st.number_input("Ikä", 18, 99, 30, key="a_ika")
+                    lapset = st.number_input("Lapset", 0, 10, 0, key="a_lapset")
                 with c_a2:
-                    status = st.selectbox("Tilanne", ["Sinkku", "Perhe", "Yhteistalous"], key="ana_status")
-                    varallisuus = st.number_input("Nykyinen varallisuus (€)", value=10000.0, key="ana_varat")
-                
-                tavoite_nimi = st.selectbox("Tavoite", ["Asunnon osto", "FIRE (Riippumattomuus)", "Puskurin kerryttäminen"], key="ana_tavoite")
-                tavoite_summa = st.number_input("Tavoitesumma (€)", value=50000.0, key="ana_summa")
-                
+                    status = st.selectbox("Tilanne", ["Sinkku", "Perhe", "Yhteistalous"], key="a_status")
+                    varallisuus = st.number_input("Nykyinen varallisuus (€)", value=10000.0, key="a_varat")
+                tavoite_nimi = st.selectbox("Tavoite", ["Asunnon osto", "FIRE", "Puskuri"], key="a_tavoite")
+                tavoite_summa = st.number_input("Tavoitesumma (€)", value=50000.0, key="a_summa")
                 submit = st.form_submit_button("✨ Aja AI-Analyysi", type="primary")
 
-            # Analyysin näyttäminen lomakkeen ulkopuolella
             if submit:
                 with st.spinner("Tekoäly laatii strategiaa..."):
-                    prof = {
-                        "ika": ika, 
-                        "suhde": status, 
-                        "lapset": lapset, 
-                        "tavoite": tavoite_nimi, 
-                        "varallisuus": varallisuus
-                    }
+                    prof = {"ika": ika, "suhde": status, "lapset": lapset, "tavoite": tavoite_nimi, "varallisuus": varallisuus}
                     res = logiikka.analysoi_talous(df_avg, prof, "Toteuma")
-                    
                     st.divider()
-                    st.markdown(f"""
-                        <div style="background-color: white; padding: 30px; border-radius: 12px; border: 1px solid #e2e8f0; color: black;">
-                            {res}
-                        </div>
-                    """, unsafe_allow_html=True)
-
+                    st.markdown(f'<div style="background-color: white; padding: 30px; border-radius: 12px; border: 1px solid #e2e8f0; color: black;">{res}</div>', unsafe_allow_html=True)

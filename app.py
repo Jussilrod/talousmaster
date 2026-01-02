@@ -64,7 +64,7 @@ else:
             "🔮 Simulaattori", 
             "💬 Chat", 
             "📝 Analyysi"
-        ], key="paa_navigaatio")
+        ])
 
         with tab1:
             r1, r2 = st.columns(2)
@@ -108,11 +108,16 @@ else:
             c_sim1, c_sim2 = st.columns([1,2]) # Korjattu nimet
             with c_sim1:
                 # 'key'-parametrit on lisätty hyppimisen estämiseksi
-                kk_saasto = st.slider("Kuukausisäästö (€)", 0.0, 3000.0, float(max(jaama_avg, 0)), key="sim_kk_2026")
+                # TÄMÄ KORJAA POMPPIMISEN: Asetetaan oletusarvo muistiin, jos sitä ei vielä ole
+                if "sim_kk_2026" not in st.session_state:
+                st.session_state["sim_kk_2026"] = float(max(jaama_avg, 0))
+
+                # Käytetään slideria ilman 'value'-parametria, koska 'key' hakee arvon session_statesta
+                kk_saasto = st.slider("Kuukausisäästö (€)", 0.0, 3000.0, key="sim_kk_2026")
                 vuodet = st.slider("Aika (v)", 1, 40, 20, key="sim_vuo_2026")
                 korko = st.slider("Tuotto %", 1.0, 15.0, 7.0, key="sim_kor_2026")
                 alkupotti = st.number_input("Alkupääoma (€)", 0, 1000000, 0, step=1000, key="sim_alku_2026")
-            with c_sim2: # Korjattu cs2 -> c_sim2
+            with c_sim2: 
                 df_sim = logiikka.laske_tulevaisuus(alkupotti, kk_saasto, korko, vuodet)
                 st.metric(f"Salkun arvo {vuodet}v päästä", f"{df_sim.iloc[-1]['Yhteensä']:,.0f} €")
                 st.plotly_chart(px.area(df_sim, x="Vuosi", y=["Oma pääoma", "Tuotto"]), width='stretch')
@@ -164,4 +169,5 @@ else:
                     st.markdown(f'<div style="background-color: white; padding: 30px; border-radius: 12px; border: 1px solid #e2e8f0; color: black;">{res}</div>', unsafe_allow_html=True)
     else:
         st.error("Datan luku epäonnistui.")
+
 

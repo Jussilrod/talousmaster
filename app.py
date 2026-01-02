@@ -107,6 +107,21 @@ if not uploaded_file:
 else:
     df_raw = logiikka.lue_kaksiosainen_excel(uploaded_file)
     if not df_raw.empty:
+        # TÄMÄ ON "SWITCH"-LOGIIKKA: muutetaan kk_1 -> Tammi jne.
+        kk_nimet_map = {
+            'kk_1': 'Tammi', 'kk_2': 'Helmi', 'kk_3': 'Maalis', 'kk_4': 'Huhti',
+            'kk_5': 'Touko', 'kk_6': 'Kesä', 'kk_7': 'Heinä', 'kk_8': 'Elo',
+            'kk_9': 'Syys', 'kk_10': 'Loka', 'kk_11': 'Marras', 'kk_12': 'Joulu'
+        }
+        
+        # Vaihdetaan nimet sarakkeeseen
+        df_raw['Kuukausi'] = df_raw['Kuukausi'].replace(kk_nimet_map)
+        
+        # Määritellään järjestyslista, jota käytetään kaavioissa
+        oikea_jarjestys = [
+            'Tammi', 'Helmi', 'Maalis', 'Huhti', 'Touko', 'Kesä', 
+            'Heinä', 'Elo', 'Syys', 'Loka', 'Marras', 'Joulu'
+        ]
         kk_lkm = df_raw['Kuukausi'].nunique()
         df_avg = df_raw.groupby(['Kategoria', 'Selite'])['Summa'].sum().reset_index()
         df_avg['Summa'] /= kk_lkm
@@ -173,31 +188,20 @@ else:
            
             st.subheader("Kehitys kuukausittain")
             if kk_lkm > 1:
-                # 1. Määritellään kalenterijärjestys tiedostosi perusteella
-                kuukaudet_oikein = [
-                    'Tammi', 'Helmi', 'Maalis', 'Huhti', 'Touko', 'Kesä', 
-                    'Heinä', 'Elo', 'Syys', 'Loka', 'Marras', 'Joulu'
-                ]
-                
-                # 2. Ryhmitellään data
                 df_trend = df_raw.groupby(['Kuukausi', 'Kategoria'])['Summa'].sum().reset_index()
                 
-                # 3. Piirretään kuvaaja ja pakotetaan X-akselin järjestys
+                # Pakotetaan Plotly käyttämään määrittelemäämme järjestystä
                 fig_trend = px.line(
                     df_trend, 
                     x='Kuukausi', 
                     y='Summa', 
                     color='Kategoria', 
                     markers=True,
-                    category_orders={"Kuukausi": kuukaudet_oikein} # TÄMÄ pakottaa oikean järjestyksen
+                    category_orders={"Kuukausi": oikea_jarjestys} # TÄMÄ korjaa järjestyksen
                 )
-                
-                # 4. Päivitetään ulkoasu ja näytetään
-                fig_trend.update_layout(xaxis_title="Kuukausi", yaxis_title="Summa (€)")
                 st.plotly_chart(fig_trend, width='stretch')
             else:
-                st.warning("Trendit vaativat dataa useammalta kuukaudelta (esim. Tammi, Helmi...).")
-
+                st.warning("Trendit vaativat dataa useammalta kuukaudelta.")
         
 
         with tab3:
@@ -275,6 +279,7 @@ else:
                     st.markdown(f'<div style="background-color: white; padding: 30px; border-radius: 12px; border: 1px solid #e2e8f0; color: black;">{res}</div>', unsafe_allow_html=True)
     else:
         st.error("Datan luku epäonnistui.")
+
 
 
 

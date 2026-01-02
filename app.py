@@ -35,8 +35,25 @@ with st.sidebar:
     st.markdown("---")
     uploaded_file = st.file_uploader("📂 Lataa täytetty Excel", type=['xlsx'])
     st.markdown("---")
+    # 3. TIETOTURVA (PÄIVITETTY)
     with st.expander("🔒 Tietoturva & Yksityisyys", expanded=False):
-        st.markdown("<small style='color: #ef4444;'>⚠️ Älä syötä henkilötietoja. Data käsitellään anonyymisti RAM-muistissa.</small>", unsafe_allow_html=True)
+        st.markdown("""
+        <small style="color: #ef4444;">
+        ⚠️ **Suositus:** Älä syötä Exceliin henkilötietojasi tai tilinumeroita. Data käsitellään anonyymisti.
+        </small>
+        
+        ---
+        
+        **1. SSL-salaus:**
+        Yhteys tähän sovellukseen on suojattu (HTTPS/SSL), mikä tarkoittaa, että verkkoliikenne sinun ja palvelimen välillä on salattua.
+        
+        **2. Ei tallennusta:**
+        Lataamasi Excel käsitellään vain väliaikaisessa muistissa (RAM) istunnon ajan. Tiedostoa ei tallenneta tietokantaan.
+        
+        **3. Tietojen minimointi:**
+        Sovellus ei lisää tai kerää henkilötietoja. Tekoäly näkee vain Excelissä olevat luvut ja tekstit.
+        """, unsafe_allow_html=True)
+
     st.markdown("---")
     st.caption("Vinkki: Täytä kuukausisarakkeet nähdäksesi trendit.")
 
@@ -207,6 +224,7 @@ else:
                     st.markdown(f'<div style="background-color: white; padding: 30px; border-radius: 12px; border: 1px solid #e2e8f0; color: black;">{res}</div>', unsafe_allow_html=True)
     else:
         st.error("Datan luku epäonnistui.")
+
 
 
 

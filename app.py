@@ -151,7 +151,7 @@ else:
             st.subheader("🔮 Miljonääri-simulaattori")
             c_sim1, c_sim2 = st.columns([1,2])
             with c_sim1:
-                kk_saasto = st.slider("Kuukausisäästö (€)", 0.0, 3000.0, float(max(jaama_avg, 50.0)), step=10.0)
+                kk_saasto = st.slider("Kuukausisäästö (€)", 0.0, 300.0, float(max(jaama_avg, 50.0)), step=10.0)
                 vuodet = st.slider("Sijoitusaika (v)", 1, 40, 20)
                 korko = st.slider("Tuotto %", 1.0, 15.0, 7.0)
                 alkupotti = st.number_input("Alkupääoma (€)", 0, 1000000, 0, step=1000)
@@ -194,10 +194,10 @@ else:
                     ika = st.number_input("Ikä", 18, 99, 30)
                     lapset = st.number_input("Lapset", 0, 10, 0)
                 with c_a2:
-                    status = st.selectbox("Tilanne", ["Sinkku", "Perhe", "Yhteistalous"])
-                    varallisuus = st.number_input("Nykyinen varallisuus (€)", value=10000.0)
-                tavoite_nimi = st.selectbox("Tavoite", ["Asunnon osto", "FIRE", "Puskuri"])
-                tavoite_summa = st.number_input("Tavoitesumma (€)", value=50000.0)
+                    status = st.selectbox("Tilanne", ["Sinkku", "Parisuhteessa (yhteistalous)", "Parisuhteessa (erilliset)", "Lapsiperhe", "Yksinhuoltaja"])
+                    varallisuus = st.number_input("Nykyinen varallisuus (€)", value=1000.0)
+                tavoite_nimi = st.selectbox("Tavoite", ["Puskurin kerryttäminen", "Asunnon osto", "Velattomuus", "FIRE (Riippumattomuus)", "Elintason nosto", "Sijoitusten kasvatus"])
+                tavoite_summa = st.number_input("Tavoitesumma (€)", value=10000.0)
                 submit = st.form_submit_button("✨ Aja AI-Analyysi", type="primary")
             if submit:
                 with st.spinner("AI analysoi..."):
@@ -207,3 +207,4 @@ else:
                     st.markdown(f'<div style="background-color: white; padding: 30px; border-radius: 12px; border: 1px solid #e2e8f0; color: black;">{res}</div>', unsafe_allow_html=True)
     else:
         st.error("Datan luku epäonnistui.")
+

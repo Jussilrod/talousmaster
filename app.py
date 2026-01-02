@@ -116,14 +116,16 @@ else:
 
         with tab3:
             st.subheader("🔮 Miljonääri-simulaattori")
-            cs1, cs2 = st.columns([1,2])
-            with cs1:
-                kk_saasto = st.slider("Kuukausisäästö (€)", 0.0, 3000.0, float(max(jaama_avg, 0)))
-                vuodet = st.slider("Aika (v)", 1, 40, 20)
+            st.caption("Visualisoi korkoa korolle -ilmiön voima. Vihreä alue kuvaa sijoitusten tuottoa.")
+            
+            c_sim1, c_sim2 = st.columns([1,2])
+            with c_sim1:
+                oletus_saasto = float(max(jaama_avg, 50.0))
+                kk_saasto = st.slider("Kuukausisäästö (€)", 0.0, 3000.0, oletus_saasto, step=10.0)
+                vuodet = st.slider("Sijoitusaika (v)", 1, 40, 20)
                 korko = st.slider("Tuotto %", 1.0, 15.0, 7.0)
-            with cs2:
-                df_sim = logiikka.laske_tulevaisuus(0, kk_saasto, korko, vuodet)
-                st.plotly_chart(px.area(df_sim, x="Vuosi", y=["Oma pääoma", "Tuotto"], color_discrete_map={"Oma pääoma": "#94a3b8", "Tuotto": "#22c55e"}), use_container_width=True)
+                alkupotti = st.number_input("Alkupääoma (€)", 0, 1000000, 0, step=1000)
+
 
         with tab4:
             st.subheader("💬 Kysy taloudestasi")
@@ -170,6 +172,7 @@ else:
                 prof = {"ika": ika, "suhde": status, "lapset": lapset, "tavoite": tavoite_nimi, "varallisuus": varallisuus}
                 res = logiikka.analysoi_talous(df_avg, prof, "Toteuma")
                 st.markdown(f'<div style="background-color: white; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0;">{res}</div>', unsafe_allow_html=True)
+
 
 
 

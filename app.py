@@ -170,26 +170,39 @@ else:
             st.plotly_chart(logiikka.luo_sankey(tulot_avg, df_avg[df_avg['Kategoria']=='Meno'], jaama_avg), width='stretch')           
             
             st.divider()
+           
+           with tab2:
             st.subheader("Kehitys kuukausittain")
             if kk_lkm > 1:
-                # LAJITTELULOGIIKKA: Järjestetään kuukaudet kronologisesti
-                kk_jarjestys = {
-                    'Tammikuu': 1, 'Helmikuu': 2, 'Maaliskuu': 3, 'Huhtikuu': 4,
-                    'Toukokuu': 5, 'Kesäkuu': 6, 'Heinäkuu': 7, 'Elokuu': 8,
-                    'Syyskuu': 9, 'Lokakuu': 10, 'Marraskuu': 11, 'Joulukuu': 12
+                # 1. Määritellään oikea järjestys tiedostosi lyhenteiden mukaan
+                kk_map = {
+                    'Tammi': 1, 'Helmi': 2, 'Maalis': 3, 'Huhti': 4,
+                    'Touko': 5, 'Kesä': 6, 'Heinä': 7, 'Elo': 8,
+                    'Syys': 9, 'Loka': 10, 'Marras': 11, 'Joulu': 12
                 }
                 
+                # 2. Ryhmitellään data
                 df_trend = df_raw.groupby(['Kuukausi', 'Kategoria'])['Summa'].sum().reset_index()
                 
-                # Luodaan apusarake järjestämistä varten
-                df_trend['kk_num'] = df_trend['Kuukausi'].map(kk_jarjestys).fillna(99)
-                df_trend = df_trend.sort_values(by=['kk_num', 'Kuukausi'])
+                # 3. Luodaan numeerinen apusarake lajittelua varten
+                df_trend['kk_num'] = df_trend['Kuukausi'].map(kk_map)
                 
-                st.plotly_chart(px.line(df_trend, x='Kuukausi', y='Summa', color='Kategoria', markers=True), width='stretch')
+                # 4. Lajitellaan data kronologisesti ennen piirtämistä
+                df_trend = df_trend.sort_values(by='kk_num')
+                
+                # 5. Piirretään kaavio
+                fig_trend = px.line(
+                    df_trend, 
+                    x='Kuukausi', 
+                    y='Summa', 
+                    color='Kategoria', 
+                    markers=True,
+                    category_orders={"Kuukausi": list(kk_map.keys())} # Varmistetaan X-akselin järjestys
+                )
+                st.plotly_chart(fig_trend, width='stretch')
             else:
-                st.warning("Trendit vaativat dataa useammalta kuukaudelta. Täytä Exceliin sarakkeet esim: Tammikuu, Helmikuu...")
-            
-
+                st.warning("Trendit vaativat dataa useammalta kuukaudelta.")
+        
 
         with tab3:
             st.subheader("🔮 Miljonääri-simulaattori")
@@ -266,6 +279,7 @@ else:
                     st.markdown(f'<div style="background-color: white; padding: 30px; border-radius: 12px; border: 1px solid #e2e8f0; color: black;">{res}</div>', unsafe_allow_html=True)
     else:
         st.error("Datan luku epäonnistui.")
+
 
 
 

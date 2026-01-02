@@ -132,8 +132,7 @@ else:
         with tab4:
             st.subheader("💬 Kysy taloudestasi")
             
-            # 1. Käytetään container-rakennetta viesteille
-            chat_container = st.container()
+           
             
             # 2. Pikanapit siistissä rivissä viestien alapuolella mutta ennen syöttöä
             st.markdown("---")
@@ -164,6 +163,9 @@ else:
                             resp = logiikka.chat_with_data(df_raw, actual_input, st.session_state.messages)
                             st.markdown(resp)
                             st.session_state.messages.append({"role": "assistant", "content": resp})
+
+         # 1. Käytetään container-rakennetta viesteille
+            chat_container = st.container()
 
         with tab5:
             # Poistettu tavoitemittari käyttäjän toiveesta
@@ -205,6 +207,7 @@ else:
                             {res}
                         </div>
                     """, unsafe_allow_html=True)
+
 
 
 

@@ -114,31 +114,46 @@ else:
             st.subheader("Rahan virtausanalyysi")
             st.plotly_chart(logiikka.luo_sankey(tulot_avg, df_avg[df_avg['Kategoria']=='Meno'], jaama_avg), use_container_width=True)
 
-        with tab3:
+       with tab3:
             st.subheader("🔮 Miljonääri-simulaattori")
             st.caption("Visualisoi korkoa korolle -ilmiön voima. Vihreä alue kuvaa sijoitusten tuottoa.")
             
             c_sim1, c_sim2 = st.columns([1,2])
             with c_sim1:
+                # Käytetään dynaamista oletusarvoa jäämän perusteella
                 oletus_saasto = float(max(jaama_avg, 50.0))
-                kk_saasto = st.slider("Kuukausisäästö (€)", 0.0, 3000.0, oletus_saasto, step=10.0)
-                vuodet = st.slider("Sijoitusaika (v)", 1, 40, 20)
-                korko = st.slider("Tuotto %", 1.0, 15.0, 7.0)
-                alkupotti = st.number_input("Alkupääoma (€)", 0, 1000000, 0, step=1000)
+                
+                # Lisätty 'key'-muuttujat estämään hyppimistä
+                kk_saasto = st.slider("Kuukausisäästö (€)", 0.0, 3000.0, oletus_saasto, step=10.0, key="sim_kk_saasto")
+                vuodet = st.slider("Sijoitusaika (v)", 1, 40, 20, key="sim_vuodet")
+                korko = st.slider("Tuotto %", 1.0, 15.0, 7.0, key="sim_korko")
+                alkupotti = st.number_input("Alkupääoma (€)", 0, 1000000, 0, step=1000, key="sim_potti")
 
             with c_sim2:
+                # Laskenta logiikka-tiedostosta
                 df_sim = logiikka.laske_tulevaisuus(alkupotti, kk_saasto, korko, vuodet)
                 
                 loppusumma = df_sim.iloc[-1]['Yhteensä']
                 loppu_tuotto = df_sim.iloc[-1]['Tuotto']
-                st.metric(f"Salkun arvo {vuodet}v päästä", f"{loppusumma:,.0f} €", delta=f"Tuottoa: {loppu_tuotto:,.0f} €")
                 
-                # Pinottu aluekaavio
+                st.metric(
+                    label=f"Salkun arvo {vuodet}v päästä", 
+                    value=f"{loppusumma:,.0f} €", 
+                    delta=f"Tuottoa: {loppu_tuotto:,.0f} €"
+                )
+                
+                # Aluekaavio
                 fig_area = px.area(
-                    df_sim, x="Vuosi", y=["Oma pääoma", "Tuotto"],
+                    df_sim, 
+                    x="Vuosi", 
+                    y=["Oma pääoma", "Tuotto"],
                     color_discrete_map={"Oma pääoma": "#94a3b8", "Tuotto": "#22c55e"}
                 )
-                fig_area.update_layout(hovermode="x unified", yaxis_title="Euroa (€)")
+                fig_area.update_layout(
+                    hovermode="x unified", 
+                    yaxis_title="Euroa (€)",
+                    margin=dict(l=0, r=0, t=20, b=0)
+                )
                 st.plotly_chart(fig_area, use_container_width=True)
 
 
@@ -205,6 +220,7 @@ else:
                             {res}
                         </div>
                     """, unsafe_allow_html=True)
+
 
 
 

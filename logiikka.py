@@ -62,7 +62,10 @@ def luo_sankey(tulot_summa, df_menot_avg, jaama):
 @st.cache_data
 def lue_kaksiosainen_excel(file):
     try:
+        # Luetaan koko tiedosto kerralla
         df = pd.read_excel(file, header=None)
+        
+        # Etsitään "Tulot" ja "Menot" tekstien sijainnit B-sarakkeesta (index 1)
         col_b = df.iloc[:, 1].astype(str)
         try:
             tulot_idx = df[col_b.str.contains("Tulot", na=False, case=False)].index[0]
@@ -70,26 +73,46 @@ def lue_kaksiosainen_excel(file):
         except IndexError:
             return pd.DataFrame()
 
-        header_row_idx = tulot_idx - 1 if tulot_idx > 0 else 0
+        # Otsikot (kuukaudet) ovat yleensä riviä ennen "Tulot"-otsikkoa
+        header_row_idx = tulot_idx - 1
         headers = df.iloc[header_row_idx]
+        
         data_rows = []
 
         def process_section(start_idx, end_idx, kategoria):
+            # Käydään läpi rivit (Selitteet)
             section = df.iloc[start_idx:end_idx].copy()
             for _, row in section.iterrows():
-                selite = str(row[1])
-                if "Yhteensä" in selite or selite == "nan": continue
+                selite = str(row[1]).strip()
+                # Ohitetaan tyhjät tai "Yhteensä"-rivit
+                if not selite or selite == "nan" or "yhteensä" in selite.lower():
+                    continue
+                
+                # Käydään läpi sarakkeet alkaen indeksistä 2 (C-sarake eteenpäin)
                 for col_idx in range(2, df.shape[1]):
+                    # Napataan sarakkeen nimi (kuukausi)
+                    col_name = str(headers[col_idx]).strip()
+                    if col_name == "nan" or not col_name:
+                        continue
+                    
+                    # Muutetaan summa numeroksi (käsittelee tyhjät solut nollina)
                     val = pd.to_numeric(row[col_idx], errors='coerce')
-                    col_name = str(headers[col_idx]) if pd.notna(headers[col_idx]) else f"KK_{col_idx-1}"
-                    if col_name == "nan": continue
-                    if pd.notna(val) and val > 0:
-                        data_rows.append({"Kategoria": kategoria, "Selite": selite, "Kuukausi": col_name, "Summa": round(val, 2)})
+                    
+                    if pd.notna(val) and val != 0:
+                        data_rows.append({
+                            "Kategoria": kategoria, 
+                            "Selite": selite, 
+                            "Kuukausi": col_name, 
+                            "Summa": float(val)
+                        })
 
+        # Prosessoidaan tulot ja menot
         process_section(tulot_idx + 2, menot_idx, "Tulo")
         process_section(menot_idx + 2, len(df), "Meno")
+        
         return pd.DataFrame(data_rows)
     except Exception as e:
+        print(f"Lukuivirhe: {e}")
         return pd.DataFrame()
 
 # --- SIMULOINTI (PÄIVITETTY: EROTTELEE PÄÄOMAN JA TUOTON) ---
@@ -223,6 +246,7 @@ def chat_with_data(df, user_question, history):
         return response.text
     except:
         return "Virhe yhteydessä."
+
 
 
 

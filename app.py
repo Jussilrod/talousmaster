@@ -1,299 +1,101 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
+import google.generativeai as genai
 import plotly.graph_objects as go
-import logiikka
 import os
 
-# --- ASETUKSET ---
-st.set_page_config(
-    page_title="TaskuEkonomisti 2.0",
-    page_icon="💎",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+def konfiguroi_ai():
+    try:
+        api_key = os.getenv("GOOGLE_API_KEY") or st.secrets.get("GOOGLE_API_KEY")
+        if api_key:
+            genai.configure(api_key=api_key)
+            return True
+        return False
+    except:
+        return False
 
-# Määritellään pohjatiedoston nimi
-EXCEL_TEMPLATE_NAME = "talous_pohja.xlsx"
+@st.cache_data
+def lue_kaksiosainen_excel(file):
+    try:
+        df = pd.read_excel(file, header=None)
+        col_b = df.iloc[:, 1].astype(str)
+        tulot_idx = df[col_b.str.contains("Tulot", na=False, case=False)].index[0]
+        menot_idx = df[col_b.str.contains("Menot", na=False, case=False)].index[0]
+        
+        headers = df.iloc[tulot_idx - 1]
+        data_rows = []
 
-# Alustetaan chat-historia
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+        def process_section(start_idx, end_idx, kategoria):
+            section = df.iloc[start_idx:end_idx].copy()
+            for _, row in section.iterrows():
+                selite = str(row[1])
+                if "Yhteensä" in selite or selite == "nan": continue
+                for col_idx in range(2, df.shape[1]):
+                    val = pd.to_numeric(row[col_idx], errors='coerce')
+                    col_name = str(headers[col_idx])
+                    if col_name != "nan" and pd.notna(val) and val > 0:
+                        data_rows.append({"Kategoria": kategoria, "Selite": selite, "Kuukausi": col_name, "Summa": round(val, 2)})
 
-# --- CSS TYYLIT ---
-local_css_path = "style.css"
-if os.path.exists(local_css_path):
-    with open(local_css_path) as f:
-        st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
-else:
-    st.markdown("""
-    <style>
-        .main-title { font-size: 3rem; font-weight: 800; color: #0f172a; margin: 0; }
-        .highlight-blue { 
-            color: #2563eb; 
-            background: -webkit-linear-gradient(45deg, #2563eb, #3b82f6);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .slogan { font-size: 1.2rem; color: #64748b; margin-bottom: 20px; }
-    </style>
-    """, unsafe_allow_html=True)
+        process_section(tulot_idx + 2, menot_idx, "Tulo")
+        process_section(menot_idx + 2, len(df), "Meno")
+        return pd.DataFrame(data_rows)
+    except:
+        return pd.DataFrame()
 
-# Alustetaan AI
-logiikka.konfiguroi_ai()
-
-# --- SIVUPALKKI (VALIKKO & TIETOTURVA) ---
-with st.sidebar:
-    st.title("💎 Valikko")
+def luo_sankey_kaavio(tulot_summa, df_menot_avg, jaama):
+    labels = ["Tulot"] + df_menot_avg['Selite'].tolist() + ["Säästö/Jäämä"]
+    sources = [0] * (len(df_menot_avg) + 1)
+    targets = list(range(1, len(df_menot_avg) + 2))
+    values = df_menot_avg['Summa'].tolist() + [max(0, jaama)]
     
-    # 1. POHJAN LATAUS (UUSI)
-    # Tarkistetaan onko pohjatiedosto olemassa palvelimella
-    if os.path.exists(EXCEL_TEMPLATE_NAME):
-        with open(EXCEL_TEMPLATE_NAME, "rb") as file:
-            st.download_button(
-                label="📥 Lataa tyhjä Excel-pohja",
-                data=file,
-                file_name="talous_tyokalu.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True
-            )
-        st.markdown("---")
-    
-    # 2. OMAN TIEDOSTON LATAUS
-    uploaded_file = st.file_uploader("📂 Lataa täytetty Excel", type=['xlsx'])
-    
-    st.markdown("---")
-    
-    # 3. TIETOTURVA (PÄIVITETTY)
-    with st.expander("🔒 Tietoturva & Yksityisyys", expanded=False):
-        st.markdown("""
-        <small style="color: #ef4444;">
-        ⚠️ **Suositus:** Älä syötä Exceliin henkilötietojasi tai tilinumeroita. Data käsitellään anonyymisti.
-        </small>
+    fig = go.Figure(data=[go.Sankey(
+        node=dict(pad=15, thickness=20, line=dict(color="black", width=0.5), label=labels, color="#3b82f6"),
+        link=dict(source=sources, target=targets, value=values, color="rgba(37, 99, 235, 0.2)")
+    )])
+    fig.update_layout(title_text="Rahan virtaus: Tulot -> Menot & Säästöt", font_size=12)
+    return fig
+
+def laske_tulevaisuus(aloitussumma, kk_saasto, korko_pros, vuodet):
+    data = []
+    saldo = aloitussumma
+    oma_paaoma = aloitussumma
+    kk_korko = (korko_pros / 100) / 12
+    data.append({"Vuosi": 0, "Oma pääoma": aloitussumma, "Tuotto": 0, "Yhteensä": aloitussumma})
+
+    for kk in range(1, vuodet * 12 + 1):
+        saldo = (saldo + kk_saasto) * (1 + kk_korko)
+        oma_paaoma += kk_saasto
+        if kk % 12 == 0:
+            data.append({"Vuosi": int(kk/12), "Oma pääoma": round(oma_paaoma,0), "Tuotto": round(saldo-oma_paaoma,0), "Yhteensä": round(saldo,0)})
+    return pd.DataFrame(data)
+
+def analysoi_talous(df_avg, profiili, data_tyyppi):
+    try:
+        tulot = df_avg[df_avg['Kategoria']=='Tulo']['Summa'].sum()
+        menot = df_avg[df_avg['Kategoria']=='Meno']['Summa'].sum()
+        jaama = tulot - menot
+        top_menot = df_avg[df_avg['Kategoria']=='Meno'].nlargest(5, 'Summa').to_string(index=False)
+
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        prompt = f"""
+        ROOLI: Yksityispankkiiri. ASIAKAS: {profiili['ika']}v, {profiili['suhde']}, tavoite: {profiili['tavoite']}.
+        DATA: Tulot {tulot}€, Menot {menot}€, Jäämä {jaama}€. TOP KULUT: {top_menot}.
         
-        ---
-        
-        **1. SSL-salaus:**
-        Yhteys tähän sovellukseen on suojattu (HTTPS/SSL), mikä tarkoittaa, että verkkoliikenne sinun ja palvelimen välillä on salattua.
-        
-        **2. Ei tallennusta:**
-        Lataamasi Excel käsitellään vain väliaikaisessa muistissa (RAM) istunnon ajan. Tiedostoa ei tallenneta tietokantaan.
-        
-        **3. Tietojen minimointi:**
-        Sovellus ei lisää tai kerää henkilötietoja. Tekoäly näkee vain Excelissä olevat luvut ja tekstit.
-        """, unsafe_allow_html=True)
-        
-    st.markdown("---")
-    st.caption("Vinkki: Täytä Exceliin kuukausisarakkeet (esim. Tammikuu, Helmikuu), niin näet trendit.")
+        TEHTÄVÄ:
+        1. Tilannekuva: Onko tavoite realistinen?
+        2. Kahvikuppi-indeksi: Kerro säästöpotentiaali {jaama}€ konkreettisina asioina (esim. noutokahveina tai suoratoistotilauksina).
+        3. Toimintasuunnitelma: Luo 3 kohdan Checklist [ ] Markdownina.
+        4. Käytä kaavaa $$A = P(1 + r/n)^{{nt}}$$ jos selität korkoa korolle.
+        """
+        return model.generate_content(prompt).text
+    except Exception as e:
+        return f"Virhe analyysissa: {str(e)}"
 
-# --- OTSIKKO (AINA NÄKYVISSÄ) ---
-st.markdown("""
-<div style="text-align: center; margin-top: 10px; margin-bottom: 30px;">
-    <h1 class="main-title">Tasku<span class="highlight-blue">Ekonomisti</span> 💎</h1>
-    <p class="slogan">Ota taloutesi hallintaan datalla ja tekoälyllä</p>
-</div>
-""", unsafe_allow_html=True)
-
-# --- PÄÄNÄKYMÄ ---
-
-# 1. TILANNE: EI TIEDOSTOA (LASKEUTUMISSIVU)
-if not uploaded_file:
-    col1, col2, col3 = st.columns([1, 3, 1])
-    with col2:
-        st.markdown("""
-        <div style="text-align: center; background-color: #f8fafc; padding: 20px; border-radius: 10px; border: 1px solid #e2e8f0;">
-            <h3>👋 Tervetuloa!</h3>
-            <p>Tämä työkalu auttaa sinua ymmärtämään rahavirtojasi, ennustamaan vaurastumista ja löytämään säästökohteita tekoälyn avulla.</p>
-            <p><strong>1. Lataa tyhjä pohja sivupalkista.</strong><br>
-            <strong>2. Täytä tietosi.</strong><br>
-            <strong>3. Lataa täytetty tiedosto takaisin.</strong></p>
-        </div>
-        <br>
-        """, unsafe_allow_html=True)
-
-        video_path = "esittely.mp4"
-        if os.path.exists(video_path):
-            st.video(video_path, autoplay=True, muted=True)
-        else:
-            st.video("https://videos.pexels.com/video-files/3129671/3129671-hd_1920_1080_30fps.mp4", autoplay=True, muted=True)
-
-# 2. TILANNE: TIEDOSTO LADATTU (DASHBOARD)
-else:
-    df_raw = logiikka.lue_kaksiosainen_excel(uploaded_file)
-    
-    if not df_raw.empty:
-        # Lasketaan keskiarvot per kuukausi
-        kk_lkm = df_raw['Kuukausi'].nunique()
-        df_avg = df_raw.groupby(['Kategoria', 'Selite'])['Summa'].sum().reset_index()
-        df_avg['Summa'] = df_avg['Summa'] / kk_lkm 
-        
-        tulot_avg = df_avg[df_avg['Kategoria']=='Tulo']['Summa'].sum()
-        menot_avg = df_avg[df_avg['Kategoria']=='Meno']['Summa'].sum()
-        jaama_avg = tulot_avg - menot_avg
-
-        # KPI MITTARIT
-        with st.container(border=True):
-            c1, c2, c3, c4 = st.columns(4)
-            c1.metric("Analysoitu", f"{kk_lkm} kk data")
-            c2.metric("Tulot (kk)", f"{tulot_avg:,.0f} €")
-            c3.metric("Menot (kk)", f"{menot_avg:,.0f} €", delta="-")
-            c4.metric("Jäämä (kk)", f"{jaama_avg:,.0f} €", delta=f"{jaama_avg:,.0f} €")
-
-        st.write("") 
-
-        # VÄLILEHDET
-        tab1, tab2, tab3, tab4, tab5 = st.tabs([
-            "📊 Yleiskuva", 
-            "📈 Trendit", 
-            "🔮 Miljonääri-simulaattori", 
-            "💬 Chat", 
-            "📝 Analyysi"
-        ])
-
-        # TAB 1: YLEISKUVA
-        with tab1:
-            r1, r2 = st.columns(2)
-            with r1:
-                st.subheader("Menojen rakenne")
-                fig_sun = px.sunburst(df_avg[df_avg['Kategoria']=='Meno'], path=['Kategoria', 'Selite'], values='Summa', color='Summa', color_continuous_scale='RdBu_r')
-                st.plotly_chart(fig_sun, use_container_width=True)
-            with r2:
-                st.subheader("Top 5 Kulut")
-                top5 = df_avg[df_avg['Kategoria']=='Meno'].sort_values('Summa', ascending=False).head(5)
-                fig_bar = px.bar(top5, x='Summa', y='Selite', orientation='h', text_auto='.0f')
-                fig_bar.update_traces(marker_color='#ef4444')
-                st.plotly_chart(fig_bar, use_container_width=True)
-
-            st.divider()
-            st.subheader("💧 Kassavirta")
-            
-            menot_sorted = df_avg[df_avg['Kategoria']=='Meno'].sort_values(by='Summa', ascending=False)
-            TOP_N = 6
-            if len(menot_sorted) > TOP_N:
-                top_m = menot_sorted.iloc[:TOP_N]
-                muut_m = menot_sorted.iloc[TOP_N:]['Summa'].sum()
-                labels = ["Tulot"] + top_m['Selite'].tolist() + ["Muut menot", "JÄÄMÄ"]
-                values = [tulot_avg] + [x * -1 for x in top_m['Summa'].tolist()] + [muut_m * -1, 0]
-                measure = ["absolute"] + ["relative"] * (len(top_m) + 1) + ["total"]
-            else:
-                labels = ["Tulot"] + menot_sorted['Selite'].tolist() + ["JÄÄMÄ"]
-                values = [tulot_avg] + [x * -1 for x in menot_sorted['Summa'].tolist()] + [0]
-                measure = ["absolute"] + ["relative"] * len(menot_sorted) + ["total"]
-
-            fig_water = go.Figure(go.Waterfall(
-                name="Kassavirta", orientation="v", measure=measure, x=labels, y=values,
-                text=[f"{v:,.0f}" for v in values[:-1]] + [f"{jaama_avg:,.0f}"],
-                textposition="outside",
-                connector={"line":{"color":"#333"}}, decreasing={"marker":{"color":"#ef4444"}},
-                increasing={"marker":{"color":"#22c55e"}}, totals={"marker":{"color":"#3b82f6"}}
-            ))
-            st.plotly_chart(fig_water, use_container_width=True)
-
-        # TAB 2: TRENDIT
-        with tab2:
-            st.subheader("Kehitys kuukausittain")
-            if kk_lkm > 1:
-                df_trend = df_raw.groupby(['Kuukausi', 'Kategoria'])['Summa'].sum().reset_index()
-                st.plotly_chart(px.line(df_trend, x='Kuukausi', y='Summa', color='Kategoria', markers=True), use_container_width=True)
-            else:
-                st.warning("Trendit vaativat dataa useammalta kuukaudelta. Täytä Exceliin sarakkeet esim: Tammikuu, Helmikuu...")
-
-        # TAB 3: SIMULAATTORI
-        with tab3:
-            st.subheader("🔮 Miljonääri-simulaattori")
-            st.caption("Visualisoi korkoa korolle -ilmiön voima. Vihreä alue kuvaa sijoitusten tuottoa.")
-            
-            c_sim1, c_sim2 = st.columns([1,2])
-            with c_sim1:
-                oletus_saasto = float(max(jaama_avg, 50.0))
-                kk_saasto = st.slider("Kuukausisäästö (€)", 0.0, 3000.0, oletus_saasto, step=10.0)
-                vuodet = st.slider("Sijoitusaika (v)", 1, 40, 20)
-                korko = st.slider("Tuotto %", 1.0, 15.0, 7.0)
-                alkupotti = st.number_input("Alkupääoma (€)", 0, 1000000, 0, step=1000)
-            
-            with c_sim2:
-                df_sim = logiikka.laske_tulevaisuus(alkupotti, kk_saasto, korko, vuodet)
-                
-                loppusumma = df_sim.iloc[-1]['Yhteensä']
-                loppu_tuotto = df_sim.iloc[-1]['Tuotto']
-                with st.container():
-                    c1, c2, c3, c4 = st.columns(4)
-                    # Esimerkki yhdestä kortista
-                    c1.markdown(f"""
-                        <div class="kpi-card">
-                            <div class="kpi-label">TULOT (KK)</div>
-                            <div class="kpi-value">{tulot_avg:,.0f} €</div>
-                        </div>
-                    """, unsafe_allow_html=True)
-    # Toista muille sarakkeille...
-                
-                # Pinottu aluekaavio
-                fig_area = px.area(
-                    df_sim, x="Vuosi", y=["Oma pääoma", "Tuotto"],
-                    color_discrete_map={"Oma pääoma": "#94a3b8", "Tuotto": "#22c55e"}
-                )
-                fig_area.update_layout(hovermode="x unified", yaxis_title="Euroa (€)")
-                st.plotly_chart(fig_area, use_container_width=True)
-
-        # TAB 4: CHAT
-        with tab4:
-            st.subheader("💬 Kysy datalta")
-            for msg in st.session_state.messages:
-                with st.chat_message(msg["role"]):
-                    st.markdown(msg["content"])
-
-            st.write("💡 **Pikavalinnat:**")
-            col_btns = st.columns(3)
-            if col_btns[0].button("Mihin rahani menivät?", use_container_width=True):
-                st.session_state.messages.append({"role": "user", "content": "Analysoi lyhyesti suurimmat kulueräni."})
-                # Tähän logiikka vastauksen triggeröintiin
-            if col_btns[1].button("Säästövinkkejä", use_container_width=True):
-                st.session_state.messages.append({"role": "user", "content": "Anna 3 vinkkiä säästämiseen näillä kuluilla."})
-            if col_btns[2].button("Simuloi +100€ säästö", use_container_width=True):
-                st.session_state.messages.append({"role": "user", "content": "Miten 100€ lisäsäästö kk vaikuttaa 10 vuodessa?"})
-                        if prompt := st.chat_input("Kysy taloudestasi..."):
-                st.session_state.messages.append({"role": "user", "content": prompt})
-                with st.chat_message("user"):
-                    st.markdown(prompt)
-                with st.chat_message("assistant"):
-                    with st.spinner("Hetki..."):
-                        resp = logiikka.chat_with_data(df_raw, prompt, st.session_state.messages)
-                        st.markdown(resp)
-                        st.session_state.messages.append({"role": "assistant", "content": resp})
-
-        # TAB 5: ANALYYSI
-        with tab5:
-            st.subheader("📝 Henkilökohtainen varainhoitosuunnitelma")
-            
-            with st.container(border=True):
-                with st.form("analyysi_form"):
-                    st.markdown("**1. Perustiedot**")
-                    c_a1, c_a2 = st.columns(2)
-                    with c_a1:
-                        ika = st.number_input("Oma ikäsi", 18, 99, 30)
-                        lapset = st.number_input("Lasten määrä taloudessa", 0, 10, 0)
-                    with c_a2:
-                        status = st.selectbox("Elämäntilanne", ["Sinkku", "Parisuhteessa (yhteistalous)", "Parisuhteessa (erilliset)", "Lapsiperhe", "Yksinhuoltaja"], index=0)
-                        data_tyyppi = st.radio("Datan lähde", ["Toteuma (Tiliote)", "Suunnitelma (Budjetti)"])
-                    
-                    st.markdown("---")
-                    st.markdown("**2. Tavoitteet**")
-                    tavoite = st.selectbox("Mikä on tärkein tavoitteesi?", ["Puskurin kerryttäminen", "Asunnon osto", "Velattomuus", "FIRE (Riippumattomuus)", "Elintason nosto", "Sijoitusten kasvatus"])
-                    varallisuus = st.number_input("Nettovarallisuus (€)", value=10000, step=1000, help="Omaisuus - Velat")
-                    
-                    st.write("")
-                    submit_btn = st.form_submit_button("✨ Pyydä Varainhoitajan Analyysi", type="primary", use_container_width=True)
-            
-            if submit_btn:
-                with st.spinner("Tekoäly laatii strategiaa..."):
-                    profiili = {"ika": ika, "suhde": status, "lapset": lapset, "tavoite": tavoite, "varallisuus": varallisuus}
-                    analyysi_teksti = logiikka.analysoi_talous(df_avg, profiili, data_tyyppi)
-                    
-                    st.markdown("---")
-                    st.markdown(f"""<div style="background-color:#f8fafc; padding:30px; border-radius:12px; border:1px solid #e2e8f0;">{analyysi_teksti}</div>""", unsafe_allow_html=True)
-    else:
-        st.error("Virhe datan luvussa.")
-
-
-
-
+def chat_with_data(df, user_question, history):
+    try:
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        summary = df.groupby(['Kategoria', 'Selite'])['Summa'].mean().to_string()
+        prompt = f"Vastaa lyhyesti datan perusteella. Yhteenveto: {summary}\nKysymys: {user_question}"
+        return model.generate_content(prompt).text
+    except:
+        return "Virhe yhteydessä."

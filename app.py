@@ -131,41 +131,39 @@ else:
         with tab4:
             st.subheader("💬 Kysy taloudestasi")
             
-            # 1. Pikanapit heti otsikon alle
+            # 1. Käytetään container-rakennetta viesteille
+            chat_container = st.container()
+            
+            # 2. Pikanapit siistissä rivissä viestien alapuolella mutta ennen syöttöä
+            st.markdown("---")
             st.caption("Pikatoiminnot:")
             p1, p2, p3 = st.columns(3)
             p_input = None
-            if p1.button("📊 Kuluanalyysi", use_container_width=True, key="btn_kulu"): 
-                p_input = "Analysoi suurimmat kulueryhmäni."
-            if p2.button("🔮 Simuloi +50€", use_container_width=True, key="btn_sim"): 
-                p_input = "Miten 50€ lisäsäästö vaikuttaa 20 vuodessa?"
-            if p3.button("📝 Säästösuunnitelma", use_container_width=True, key="btn_plan"): 
-                p_input = "Luo minulle säästösuunnitelma."
-            
-            st.divider()
+            if p1.button("📊 Kuluanalyysi", use_container_width=True): p_input = "Analysoi suurimmat kulueryhmäni."
+            if p2.button("🔮 Simuloi +50€", use_container_width=True): p_input = "Miten 50€ lisäsäästö vaikuttaa 20 vuodessa?"
+            if p3.button("📝 Säästösuunnitelma", use_container_width=True): p_input = "Luo minulle säästösuunnitelma."
 
-            # 2. Viestihistoria (tämä on nyt nappien alla ja syötön yläpuolella)
-            for msg in st.session_state.messages:
-                with st.chat_message(msg["role"]):
-                    st.markdown(msg["content"])
+            # 3. Chat-historia containerin sisään
+            with chat_container:
+                for msg in st.session_state.messages:
+                    with st.chat_message(msg["role"]):
+                        st.markdown(msg["content"])
             
-            # 3. Syöttökenttä alimmaksi
+            # 4. Syöttökenttä
             chat_in = st.chat_input("Kirjoita kysymys...")
-            
-            # Käsitellään joko napin painallus tai kirjoitettu teksti
             actual_input = chat_in or p_input
             
             if actual_input:
                 st.session_state.messages.append({"role": "user", "content": actual_input})
-                with st.chat_message("user"):
-                    st.markdown(actual_input)
-                
-                with st.chat_message("assistant"):
-                    with st.spinner("Mietitään..."):
-                        resp = logiikka.chat_with_data(df_raw, actual_input, st.session_state.messages)
-                        st.markdown(resp)
-                        st.session_state.messages.append({"role": "assistant", "content": resp})
-                        
+                with chat_container:
+                    with st.chat_message("user"):
+                        st.markdown(actual_input)
+                    with st.chat_message("assistant"):
+                        with st.spinner("Mietitään..."):
+                            resp = logiikka.chat_with_data(df_raw, actual_input, st.session_state.messages)
+                            st.markdown(resp)
+                            st.session_state.messages.append({"role": "assistant", "content": resp})
+        
         with tab5:
             # Poistettu tavoitemittari käyttäjän toiveesta
             
@@ -206,6 +204,7 @@ else:
                             {res}
                         </div>
                     """, unsafe_allow_html=True)
+
 
 
 

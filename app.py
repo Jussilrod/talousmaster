@@ -1,101 +1,112 @@
 import streamlit as st
 import pandas as pd
-import google.generativeai as genai
+import plotly.express as px
 import plotly.graph_objects as go
+import logiikka
 import os
 
-def konfiguroi_ai():
-    try:
-        api_key = os.getenv("GOOGLE_API_KEY") or st.secrets.get("GOOGLE_API_KEY")
-        if api_key:
-            genai.configure(api_key=api_key)
-            return True
-        return False
-    except:
-        return False
+st.set_page_config(page_title="TaskuEkonomisti 2.0", page_icon="💎", layout="wide")
 
-@st.cache_data
-def lue_kaksiosainen_excel(file):
-    try:
-        df = pd.read_excel(file, header=None)
-        col_b = df.iloc[:, 1].astype(str)
-        tulot_idx = df[col_b.str.contains("Tulot", na=False, case=False)].index[0]
-        menot_idx = df[col_b.str.contains("Menot", na=False, case=False)].index[0]
+# --- ALUSTUS ---
+if "messages" not in st.session_state: st.session_state.messages = []
+if "tavoite_nimi" not in st.session_state: st.session_state.tavoite_nimi = "Säästötavoite"
+if "varallisuus" not in st.session_state: st.session_state.varallisuus = 10000
+if "tavoite_summa" not in st.session_state: st.session_state.tavoite_summa = 50000
+
+# CSS Lataus
+with open("style.css") as f:
+    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
+logiikka.konfiguroi_ai()
+
+# --- SIVUPALKKI ---
+with st.sidebar:
+    st.title("💎 Valikko")
+    if os.path.exists("talous_pohja.xlsx"):
+        with open("talous_pohja.xlsx", "rb") as f:
+            st.download_button("📥 Lataa tyhjä Excel", f, file_name="pohja.xlsx", use_container_width=True)
+    uploaded_file = st.file_uploader("📂 Lataa täytetty Excel", type=['xlsx'])
+
+# --- OTSIKKO ---
+st.markdown('<div style="text-align:center;"><h1 class="main-title">Tasku<span class="highlight-blue">Ekonomisti</span> 💎</h1><p class="slogan">Datalla kohti vaurautta</p></div>', unsafe_allow_html=True)
+
+if not uploaded_file:
+    st.info("Lataa Excel-tiedosto sivupalkista aloittaaksesi.")
+    st.video("https://videos.pexels.com/video-files/3129671/3129671-hd_1920_1080_30fps.mp4")
+else:
+    df_raw = logiikka.lue_kaksiosainen_excel(uploaded_file)
+    if not df_raw.empty:
+        kk_lkm = df_raw['Kuukausi'].nunique()
+        df_avg = df_raw.groupby(['Kategoria', 'Selite'])['Summa'].sum().reset_index()
+        df_avg['Summa'] /= kk_lkm
         
-        headers = df.iloc[tulot_idx - 1]
-        data_rows = []
+        tulot_avg = df_avg[df_avg['Kategoria']=='Tulo']['Summa'].sum()
+        menot_avg = df_avg[df_avg['Kategoria']=='Meno']['Summa'].sum()
+        jaama_avg = tulot_avg - menot_avg
 
-        def process_section(start_idx, end_idx, kategoria):
-            section = df.iloc[start_idx:end_idx].copy()
-            for _, row in section.iterrows():
-                selite = str(row[1])
-                if "Yhteensä" in selite or selite == "nan": continue
-                for col_idx in range(2, df.shape[1]):
-                    val = pd.to_numeric(row[col_idx], errors='coerce')
-                    col_name = str(headers[col_idx])
-                    if col_name != "nan" and pd.notna(val) and val > 0:
-                        data_rows.append({"Kategoria": kategoria, "Selite": selite, "Kuukausi": col_name, "Summa": round(val, 2)})
+        # --- KPI KORTIT (Glassmorphism) ---
+        c1, c2, c3, c4 = st.columns(4)
+        cards = [
+            ("Data", f"{kk_lkm} kk", "📈"),
+            ("Tulot", f"{tulot_avg:,.0f} €", "💰"),
+            ("Menot", f"{menot_avg:,.0f} €", "📉"),
+            ("Jäämä", f"{jaama_avg:,.0f} €", "💎")
+        ]
+        for i, (label, val, icon) in enumerate(cards):
+            with [c1, c2, c3, c4][i]:
+                st.markdown(f'<div class="kpi-card"><div class="kpi-label">{icon} {label}</div><div class="kpi-value">{val}</div></div>', unsafe_allow_html=True)
 
-        process_section(tulot_idx + 2, menot_idx, "Tulo")
-        process_section(menot_idx + 2, len(df), "Meno")
-        return pd.DataFrame(data_rows)
-    except:
-        return pd.DataFrame()
+        # --- TAVOITTEEN SEURANTA ---
+        progress = min(st.session_state.varallisuus / st.session_state.tavoite_summa, 1.0)
+        with st.container(border=True):
+            st.markdown(f"### 🎯 Tavoite: {st.session_state.tavoite_nimi}")
+            cp1, cp2 = st.columns([4, 1])
+            cp1.progress(progress)
+            cp2.markdown(f"**{progress*100:.1f}%**")
+            st.caption(f"Nykyinen varallisuus {st.session_state.varallisuus:,.0f}€ / Tavoite {st.session_state.tavoite_summa:,.0f}€")
 
-def luo_sankey_kaavio(tulot_summa, df_menot_avg, jaama):
-    labels = ["Tulot"] + df_menot_avg['Selite'].tolist() + ["Säästö/Jäämä"]
-    sources = [0] * (len(df_menot_avg) + 1)
-    targets = list(range(1, len(df_menot_avg) + 2))
-    values = df_menot_avg['Summa'].tolist() + [max(0, jaama)]
-    
-    fig = go.Figure(data=[go.Sankey(
-        node=dict(pad=15, thickness=20, line=dict(color="black", width=0.5), label=labels, color="#3b82f6"),
-        link=dict(source=sources, target=targets, value=values, color="rgba(37, 99, 235, 0.2)")
-    )])
-    fig.update_layout(title_text="Rahan virtaus: Tulot -> Menot & Säästöt", font_size=12)
-    return fig
-
-def laske_tulevaisuus(aloitussumma, kk_saasto, korko_pros, vuodet):
-    data = []
-    saldo = aloitussumma
-    oma_paaoma = aloitussumma
-    kk_korko = (korko_pros / 100) / 12
-    data.append({"Vuosi": 0, "Oma pääoma": aloitussumma, "Tuotto": 0, "Yhteensä": aloitussumma})
-
-    for kk in range(1, vuodet * 12 + 1):
-        saldo = (saldo + kk_saasto) * (1 + kk_korko)
-        oma_paaoma += kk_saasto
-        if kk % 12 == 0:
-            data.append({"Vuosi": int(kk/12), "Oma pääoma": round(oma_paaoma,0), "Tuotto": round(saldo-oma_paaoma,0), "Yhteensä": round(saldo,0)})
-    return pd.DataFrame(data)
-
-def analysoi_talous(df_avg, profiili, data_tyyppi):
-    try:
-        tulot = df_avg[df_avg['Kategoria']=='Tulo']['Summa'].sum()
-        menot = df_avg[df_avg['Kategoria']=='Meno']['Summa'].sum()
-        jaama = tulot - menot
-        top_menot = df_avg[df_avg['Kategoria']=='Meno'].nlargest(5, 'Summa').to_string(index=False)
-
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        prompt = f"""
-        ROOLI: Yksityispankkiiri. ASIAKAS: {profiili['ika']}v, {profiili['suhde']}, tavoite: {profiili['tavoite']}.
-        DATA: Tulot {tulot}€, Menot {menot}€, Jäämä {jaama}€. TOP KULUT: {top_menot}.
+        # --- VÄLILEHDET ---
+        tabs = st.tabs(["📊 Yleiskuva", "🌊 Virtaus", "🔮 Simulaattori", "💬 Chat", "📝 Suunnitelma"])
         
-        TEHTÄVÄ:
-        1. Tilannekuva: Onko tavoite realistinen?
-        2. Kahvikuppi-indeksi: Kerro säästöpotentiaali {jaama}€ konkreettisina asioina (esim. noutokahveina tai suoratoistotilauksina).
-        3. Toimintasuunnitelma: Luo 3 kohdan Checklist [ ] Markdownina.
-        4. Käytä kaavaa $$A = P(1 + r/n)^{{nt}}$$ jos selität korkoa korolle.
-        """
-        return model.generate_content(prompt).text
-    except Exception as e:
-        return f"Virhe analyysissa: {str(e)}"
+        with tabs[0]: # Yleiskuva
+            col1, col2 = st.columns(2)
+            col1.plotly_chart(px.sunburst(df_avg[df_avg['Kategoria']=='Meno'], path=['Selite'], values='Summa', title="Menot"), use_container_width=True)
+            col2.plotly_chart(px.bar(df_avg[df_avg['Kategoria']=='Meno'].nlargest(5, 'Summa'), x='Summa', y='Selite', orientation='h', title="Top 5 Kulut"), use_container_width=True)
 
-def chat_with_data(df, user_question, history):
-    try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        summary = df.groupby(['Kategoria', 'Selite'])['Summa'].mean().to_string()
-        prompt = f"Vastaa lyhyesti datan perusteella. Yhteenveto: {summary}\nKysymys: {user_question}"
-        return model.generate_content(prompt).text
-    except:
-        return "Virhe yhteydessä."
+        with tabs[1]: # Sankey
+            st.plotly_chart(logiikka.luo_sankey_kaavio(tulot_avg, df_avg[df_avg['Kategoria']=='Meno'], jaama_avg), use_container_width=True)
+
+        with tabs[2]: # Simulaattori
+            c_s1, c_s2 = st.columns([1, 2])
+            with c_s1:
+                kk_s = st.slider("KK-säästö (€)", 0, 2000, int(max(0, jaama_avg)))
+                vuo = st.slider("Vuodet", 1, 40, 15)
+            with c_s2:
+                df_sim = logiikka.laske_tulevaisuus(st.session_state.varallisuus, kk_s, 7.0, vuo)
+                st.plotly_chart(px.area(df_sim, x="Vuosi", y=["Oma pääoma", "Tuotto"], title="Varallisuuden kasvu"), use_container_width=True)
+
+        with tabs[3]: # Chat
+            st.write("💡 **Pikavalinnat:**")
+            p_c1, p_c2, p_c3 = st.columns(3)
+            q = None
+            if p_c1.button("Mihin rahani menevät?", use_container_width=True): q = "Mihin rahani menevät?"
+            if p_c2.button("Säästövinkkejä", use_container_width=True): q = "Anna 3 säästövinkkiä."
+            if p_c3.button("Simuloi +100€", use_container_width=True): q = "Miten 100€ lisäsäästö vaikuttaa?"
+            
+            for m in st.session_state.messages:
+                with st.chat_message(m["role"]): st.markdown(m["content"])
+            
+            if user_input := (st.chat_input("Kysy taloudestasi...") or q):
+                st.session_state.messages.append({"role": "user", "content": user_input})
+                st.rerun() # Päivittää chatin heti
+
+        with tabs[4]: # Suunnitelma
+            with st.form("set_goals"):
+                st.session_state.tavoite_nimi = st.selectbox("Tavoite", ["Asunnon osto", "FIRE", "Puskuri", "Sijoitukset"])
+                st.session_state.tavoite_summa = st.number_input("Tavoitesumma (€)", value=st.session_state.tavoite_summa)
+                st.session_state.varallisuus = st.number_input("Nykyinen varallisuus (€)", value=st.session_state.varallisuus)
+                if st.form_submit_button("Päivitä tiedot ja pyydä analyysi"):
+                    with st.spinner("AI analysoi..."):
+                        prof = {"ika": 30, "suhde": "Sinkku", "tavoite": st.session_state.tavoite_nimi, "varallisuus": st.session_state.varallisuus}
+                        st.markdown(logiikka.analysoi_talous(df_avg, prof, "Toteuma"))
+                    st.rerun()

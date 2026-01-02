@@ -12,6 +12,14 @@ st.set_page_config(page_title="TaskuEkonomisti 2.0", page_icon="💎", layout="w
 if "messages" not in st.session_state: st.session_state.messages = []
 if "varallisuus_tavoite" not in st.session_state: st.session_state.varallisuus_tavoite = 50000.0
 
+# Määritellään pohjatiedoston nimi
+EXCEL_TEMPLATE_NAME = "talous_pohja.xlsx"
+
+# Alustetaan chat-historia
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+
 # --- CSS ---
 if os.path.exists("style.css"):
     with open("style.css") as f:
@@ -235,6 +243,7 @@ else:
                     st.markdown(f'<div style="background-color: white; padding: 30px; border-radius: 12px; border: 1px solid #e2e8f0; color: black;">{res}</div>', unsafe_allow_html=True)
     else:
         st.error("Datan luku epäonnistui.")
+
 
 
 

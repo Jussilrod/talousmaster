@@ -114,7 +114,7 @@ else:
             st.subheader("Rahan virtausanalyysi")
             st.plotly_chart(logiikka.luo_sankey(tulot_avg, df_avg[df_avg['Kategoria']=='Meno'], jaama_avg), use_container_width=True)
 
-       with tab3:
+        with tab3:
             st.subheader("🔮 Miljonääri-simulaattori")
             cs1, cs2 = st.columns([1,2])
             with cs1:
@@ -192,6 +192,7 @@ else:
                             {res}
                         </div>
                     """, unsafe_allow_html=True)
+
 
 
 

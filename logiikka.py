@@ -5,7 +5,17 @@ import plotly.graph_objects as go
 import plotly.express as px
 import os
 
-# --- KONFIGURAATIO ---
+# --- VÄRIT ---
+# Määritellään globaali paletti
+PASTEL_COLORS = px.colors.qualitative.Pastel
+
+def muotoile_suomi(luku):
+    """Muotoilee luvun suomalaiseen tyyliin: 1 234,56 €"""
+    if pd.isna(luku): return "0 €"
+    # Muutetaan piste pilkuksi ja lisätään tuhansien erottimeksi välilyönti
+    formatted = f"{luku:,.0f}".replace(",", " ").replace(".", ",")
+    return f"{formatted} €"
+
 @st.cache_resource
 def konfiguroi_ai():
     try:
@@ -21,13 +31,8 @@ def konfiguroi_ai():
         return False
         
 def luo_sankey(tulot_summa, df_menot_avg, jaama):
-    # Luodaan värit kategorioille käyttäen Plotlyn valmista palettia
-    color_palette = px.colors.qualitative.Pastel
-    
     labels = ["Tulot"] + df_menot_avg['Selite'].tolist() + ["Säästöt/Jäämä"]
-    
-    # Määritellään värit solmuille
-    node_colors = [color_palette[i % len(color_palette)] for i in range(len(labels))]
+    node_colors = [PASTEL_COLORS[i % len(PASTEL_COLORS)] for i in range(len(labels))]
     
     sources = [0] * (len(df_menot_avg) + 1)
     targets = list(range(1, len(df_menot_avg) + 2))
@@ -35,27 +40,22 @@ def luo_sankey(tulot_summa, df_menot_avg, jaama):
 
     fig = go.Figure(data=[go.Sankey(
         node=dict(
-            pad=20, # Lisää väliä solmujen välille tarkkuuden parantamiseksi
+            pad=20, 
             thickness=20,
             line=dict(color="gray", width=0.5),
             label=labels,
-            color=node_colors # Käytetään uusia värejä
+            color=node_colors 
         ),
         link=dict(
             source=sources,
             target=targets,
             value=values,
-            # Tehdään linkeistä solmun värisiä mutta läpinäkyviä
             color=[node_colors[t].replace('rgb', 'rgba').replace(')', ', 0.3)') for t in targets]
         )
     )])
     
-    # Säädetään korkeutta, jotta se ei ole niin "epätarkka"
-    fig.update_layout(height=600, font_size=12)
-
-    # Pakotetaan tekstin renderöinti ilman varjoja (halo: 0)
+    fig.update_layout(height=600, font_size=12, margin=dict(t=20, b=20))
     fig.update_traces(textfont_color="black", selector=dict(type='sankey'))
-    
     return fig
 
 # --- EXCELIN LUKU ---
@@ -92,29 +92,18 @@ def lue_kaksiosainen_excel(file):
     except Exception as e:
         return pd.DataFrame()
 
-
-# --- SIMULOINTI (PÄIVITETTY: EROTTELEE PÄÄOMAN JA TUOTON) ---
 def laske_tulevaisuus(aloitussumma, kk_saasto, korko_pros, vuodet):
     data = []
     saldo = aloitussumma
-    oma_paaoma = aloitussumma # Seurataan paljonko on talletettu itse taskusta
-    
+    oma_paaoma = aloitussumma 
     kk_korko = (korko_pros / 100) / 12
     
-    # Lisätään alkupiste (Vuosi 0)
-    data.append({
-        "Vuosi": 0,
-        "Oma pääoma": aloitussumma,
-        "Tuotto": 0,
-        "Yhteensä": aloitussumma
-    })
+    data.append({"Vuosi": 0, "Oma pääoma": aloitussumma, "Tuotto": 0, "Yhteensä": aloitussumma})
 
     for kk in range(1, vuodet * 12 + 1):
         saldo += kk_saasto
         oma_paaoma += kk_saasto
         saldo *= (1 + kk_korko)
-        
-        # Tallennetaan data kerran vuodessa
         if kk % 12 == 0: 
             tuotto = saldo - oma_paaoma
             data.append({
@@ -123,13 +112,10 @@ def laske_tulevaisuus(aloitussumma, kk_saasto, korko_pros, vuodet):
                 "Tuotto": round(tuotto, 0),
                 "Yhteensä": round(saldo, 0)
             })
-            
     return pd.DataFrame(data)
 
-# --- ANALYYSI (PARANNETTU KONTEKSTI) ---
 def analysoi_talous(df_avg, profiili, data_tyyppi):
     try:
-        # 1. Laskenta (pysyy samana)
         tulot = df_avg[df_avg['Kategoria']=='Tulo']['Summa'].sum()
         menot = df_avg[df_avg['Kategoria']=='Meno']['Summa'].sum()
         jaama = tulot - menot
@@ -141,31 +127,24 @@ def analysoi_talous(df_avg, profiili, data_tyyppi):
                  sijoitukset_summa += row['Summa']
         
         todellinen_saasto = jaama + sijoitukset_summa
-
-        # Top kulut
         top_menot = df_avg[df_avg['Kategoria']=='Meno'].nlargest(5, 'Summa')
         kulut_txt = top_menot.to_string(index=False)
 
-        # 2. Älykäs tilannetulkinta
-        if jaama < 0:
-            status_txt = "Kriittinen (Alijäämäinen)"
-        elif todellinen_saasto > 500:
-            status_txt = "Vahva (Ylijäämäinen)"
-        else:
-            status_txt = "Tasapainoilija (Nollatulos)"
+        if jaama < 0: status_txt = "Kriittinen (Alijäämäinen)"
+        elif todellinen_saasto > 500: status_txt = "Vahva (Ylijäämäinen)"
+        else: status_txt = "Tasapainoilija (Nollatulos)"
 
-        # 3. PROMPT ENGINEERING (KORJATTU HENKILÖKUVAUS)
-        model = genai.GenerativeModel('gemini-2.5-flash-lite')
+        model = genai.GenerativeModel('gemini-1.5-flash-latest') # Päivitetty vakaampaan versioon
         
         prompt = f"""
         ### ROLE
         Toimit yksityispankkiirina (Private Banker). Tyylisi on analyyttinen mutta empaattinen.
         
-        ### ASIAKASPROFIILI (Tärkeä: Erota henkilö ja kotitalous)
+        ### ASIAKASPROFIILI
         - **Henkilö:** {profiili['ika']}-vuotias aikuinen.
         - **Kotitalous:** {profiili['suhde']}. Lapsia: {profiili['lapset']}.
         - **Päätavoite:** {profiili['tavoite']}
-        - **Nettovarallisuus:** {profiili['varallisuus']} € (Asunnot + sijoitukset - velat)
+        - **Nettovarallisuus:** {profiili['varallisuus']} €
         
         ### TALOUDEN DATA ({data_tyyppi})
         - Tulot: {tulot:.0f} €/kk
@@ -178,66 +157,25 @@ def analysoi_talous(df_avg, profiili, data_tyyppi):
         {kulut_txt}
 
         ### TEHTÄVÄ
-        Luo Markdown-muotoinen analyysi (älä käytä otsikoissa risuaitaa # vaan ##):
-
+        Luo Markdown-muotoinen analyysi (käytä ## otsikoita):
         ## 1. Tilannekuva
-        Kuvaile tilannetta luonnollisesti. Esim. "Olet 37-vuotias ja elät lapsiperhearkea..." eikä "Olet 37-vuotias perhe".
-        Peilaa nykytilannetta ilmoitettuun tavoitteeseen ("{profiili['tavoite']}"). Onko se realistinen näillä luvuilla?
-
         ## 2. Kulujen rakenne
-        Analysoi TOP-kuluja. Ovatko ne linjassa perhekoon ({profiili['lapset']} lasta) kanssa? 
-        Jos lapsia on, huomioi se (esim. ruokakulut ovat luonnostaan korkeammat).
-
-        ## 3. Toimenpidesuositus
-        Anna YKSI konkreettinen neuvo. Muuta säästöpotentiaali "Kahvikuppi-indeksiksi" 
-        (esim. "Tämä säästö vastaa 12 noutokahvia kuukaudessa").
-
-        ## 4. Tehtävälista (Checklist)
-        Luo 3 kohdan interaktiivinen tehtävälista Markdown-muodossa [ ], jolla käyttäjä pääsee alkuun.
-        
+        ## 3. Toimenpidesuositus (sis. Kahvikuppi-indeksi)
+        ## 4. Tehtävälista [ ]
         ## 5. Ennuste
-        Jos nykyinen säästötahti ({todellinen_saasto:.0f}€/kk) jatkuu, onko tavoite saavutettavissa?
-
         ## Arvosana (4-10)
-        Perustele lyhyesti.
         """
-
         response = model.generate_content(prompt)
         return response.text
-
     except Exception as e:
         return f"Virhe analyysissa: {str(e)}"
-        
 
-# --- CHAT ---
 def chat_with_data(df, user_question, history):
     try:
-        model = genai.GenerativeModel('gemini-2.5-flash-lite')
+        model = genai.GenerativeModel('gemini-1.5-flash-latest')
         data_summary = df.head(50).to_string(index=False)
-        prompt = f"""
-        Vastaa lyhyesti kysymykseen datan perusteella.
-        DATA: {data_summary}
-        HISTORIA: {history}
-        KYSYMYS: {user_question}
-        """
+        prompt = f"Vastaa lyhyesti kysymykseen datan perusteella.\nDATA: {data_summary}\nHISTORIA: {history}\nKYSYMYS: {user_question}"
         response = model.generate_content(prompt)
         return response.text
     except:
         return "Virhe yhteydessä."
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -59,6 +59,7 @@ def luo_sankey(tulot_summa, df_menot_avg, jaama):
     return fig
 
 # --- EXCELIN LUKU ---
+@st.cache_data
 def lue_kaksiosainen_excel(file):
     try:
         df = pd.read_excel(file, header=None)
@@ -223,6 +224,7 @@ def chat_with_data(df, user_question, history):
         return response.text
     except:
         return "Virhe yhteydessä."
+
 
 
 

@@ -243,15 +243,15 @@ else:
                     st.markdown(msg["content"])
 
             st.write("💡 **Pikavalinnat:**")
-col_btns = st.columns(3)
-if col_btns[0].button("Mihin rahani menivät?", use_container_width=True):
-    st.session_state.messages.append({"role": "user", "content": "Analysoi lyhyesti suurimmat kulueräni."})
-    # Tähän logiikka vastauksen triggeröintiin
-if col_btns[1].button("Säästövinkkejä", use_container_width=True):
-    st.session_state.messages.append({"role": "user", "content": "Anna 3 vinkkiä säästämiseen näillä kuluilla."})
-if col_btns[2].button("Simuloi +100€ säästö", use_container_width=True):
-    st.session_state.messages.append({"role": "user", "content": "Miten 100€ lisäsäästö kk vaikuttaa 10 vuodessa?"})
-            if prompt := st.chat_input("Kysy taloudestasi..."):
+            col_btns = st.columns(3)
+            if col_btns[0].button("Mihin rahani menivät?", use_container_width=True):
+                st.session_state.messages.append({"role": "user", "content": "Analysoi lyhyesti suurimmat kulueräni."})
+                # Tähän logiikka vastauksen triggeröintiin
+            if col_btns[1].button("Säästövinkkejä", use_container_width=True):
+                st.session_state.messages.append({"role": "user", "content": "Anna 3 vinkkiä säästämiseen näillä kuluilla."})
+            if col_btns[2].button("Simuloi +100€ säästö", use_container_width=True):
+                st.session_state.messages.append({"role": "user", "content": "Miten 100€ lisäsäästö kk vaikuttaa 10 vuodessa?"})
+                        if prompt := st.chat_input("Kysy taloudestasi..."):
                 st.session_state.messages.append({"role": "user", "content": prompt})
                 with st.chat_message("user"):
                     st.markdown(prompt)
@@ -293,6 +293,7 @@ if col_btns[2].button("Simuloi +100€ säästö", use_container_width=True):
                     st.markdown(f"""<div style="background-color:#f8fafc; padding:30px; border-radius:12px; border:1px solid #e2e8f0;">{analyysi_teksti}</div>""", unsafe_allow_html=True)
     else:
         st.error("Virhe datan luvussa.")
+
 
 
 

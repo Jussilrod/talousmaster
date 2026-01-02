@@ -171,7 +171,6 @@ else:
             
             st.divider()
            
-           with tab2:
             st.subheader("Kehitys kuukausittain")
             if kk_lkm > 1:
                 # 1. Määritellään oikea järjestys tiedostosi lyhenteiden mukaan
@@ -279,6 +278,7 @@ else:
                     st.markdown(f'<div style="background-color: white; padding: 30px; border-radius: 12px; border: 1px solid #e2e8f0; color: black;">{res}</div>', unsafe_allow_html=True)
     else:
         st.error("Datan luku epäonnistui.")
+
 
 
 

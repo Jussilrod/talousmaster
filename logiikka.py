@@ -81,7 +81,7 @@ def lue_kaksiosainen_excel(file):
                 if "Yhteensä" in selite or selite == "nan": continue
                 for col_idx in range(2, df.shape[1]):
                     val = pd.to_numeric(row[col_idx], errors='coerce')
-                    col_name = str(headers[col_idx]) if pd.notna(headers[col_idx]) else f"KK_{col_idx-1}"
+                    col_name = str(headers[col_idx]) if pd.notna(headers[col_idx]) else f"kk_{col_idx-1}"
                     if col_name == "nan": continue
                     if pd.notna(val) and val > 0:
                         data_rows.append({"Kategoria": kategoria, "Selite": selite, "Kuukausi": col_name, "Summa": round(val, 2)})
@@ -224,6 +224,7 @@ def chat_with_data(df, user_question, history):
         return response.text
     except:
         return "Virhe yhteydessä."
+
 
 
 

@@ -4,36 +4,14 @@
     font-family: 'Segoe UI', 'Roboto', Helvetica, Arial, sans-serif;
 }
 
-/* --- GLASSMORPHISM KPI KORTIT --- */
-.kpi-card {
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(10px);
-    border-radius: 15px;
-    padding: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    text-align: center;
-    margin-bottom: 10px;
-}
-
-.kpi-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.15);
-    border: 1px solid rgba(37, 99, 235, 0.5);
-}
-
-.kpi-label { font-size: 0.85rem; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
-.kpi-value { font-size: 1.8rem; font-weight: 800; color: #1e293b; margin: 5px 0; }
-.kpi-delta { font-size: 0.9rem; font-weight: 600; }
-
 /* --- OTSIKOT --- */
 .main-title {
-    font-size: 3.5rem;
+    font-size: 4rem;
     font-weight: 800;
     color: #0f172a;
     margin-bottom: 0px;
     line-height: 1.1;
+    letter-spacing: -0.02em;
 }
 
 .highlight-blue {
@@ -41,4 +19,43 @@
     background: -webkit-linear-gradient(45deg, #2563eb, #3b82f6);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+}
+
+.slogan {
+    font-size: 1.5rem;
+    font-weight: 400;
+    color: #64748b;
+    margin-top: 10px;
+    margin-bottom: 50px;
+}
+
+/* --- GLASSMORPHISM KPI KORTIT --- */
+.kpi-card {
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 16px;
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    transition: transform 0.3s ease;
+}
+
+.kpi-card:hover {
+    transform: translateY(-5px);
+    border: 1px solid rgba(37, 99, 235, 0.4);
+}
+
+.kpi-label {
+    font-size: 0.85rem;
+    color: #64748b;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.kpi-value {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #0f172a;
 }

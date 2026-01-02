@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import google.generativeai as genai
+import plotly.graph_objects as go
 import os
 
 # --- KONFIGURAATIO ---
@@ -209,6 +210,7 @@ def chat_with_data(df, user_question, history):
         return response.text
     except:
         return "Virhe yhteydessä."
+
 
 
 

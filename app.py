@@ -67,17 +67,45 @@ else:
             "📝 Analyysi"
         ])
 
+        # TAB 1: YLEISKUVA
         with tab1:
-            st.subheader("Menojen rakenne")
-            # Palautetaan alkuperäinen Sunburst
-            fig_sun = px.sunburst(df_avg[df_avg['Kategoria']=='Meno'], path=['Selite'], values='Summa', color='Summa', color_continuous_scale='RdBu_r')
-            st.plotly_chart(fig_sun, use_container_width=True)
-            
+            r1, r2 = st.columns(2)
+            with r1:
+                st.subheader("Menojen rakenne")
+                fig_sun = px.sunburst(df_avg[df_avg['Kategoria']=='Meno'], path=['Kategoria', 'Selite'], values='Summa', color='Summa', color_continuous_scale='RdBu_r')
+                st.plotly_chart(fig_sun, use_container_width=True)
+            with r2:
+                st.subheader("Top 5 Kulut")
+                top5 = df_avg[df_avg['Kategoria']=='Meno'].sort_values('Summa', ascending=False).head(5)
+                fig_bar = px.bar(top5, x='Summa', y='Selite', orientation='h', text_auto='.0f')
+                fig_bar.update_traces(marker_color='#ef4444')
+                st.plotly_chart(fig_bar, use_container_width=True)
+
             st.divider()
+            st.subheader("💧 Kassavirta")
             
-            st.subheader("Top 5 Kulut")
-            top5 = df_avg[df_avg['Kategoria']=='Meno'].sort_values('Summa', ascending=False).head(5)
-            st.plotly_chart(px.bar(top5, x='Summa', y='Selite', orientation='h'), use_container_width=True)
+            menot_sorted = df_avg[df_avg['Kategoria']=='Meno'].sort_values(by='Summa', ascending=False)
+            TOP_N = 6
+            if len(menot_sorted) > TOP_N:
+                top_m = menot_sorted.iloc[:TOP_N]
+                muut_m = menot_sorted.iloc[TOP_N:]['Summa'].sum()
+                labels = ["Tulot"] + top_m['Selite'].tolist() + ["Muut menot", "JÄÄMÄ"]
+                values = [tulot_avg] + [x * -1 for x in top_m['Summa'].tolist()] + [muut_m * -1, 0]
+                measure = ["absolute"] + ["relative"] * (len(top_m) + 1) + ["total"]
+            else:
+                labels = ["Tulot"] + menot_sorted['Selite'].tolist() + ["JÄÄMÄ"]
+                values = [tulot_avg] + [x * -1 for x in menot_sorted['Summa'].tolist()] + [0]
+                measure = ["absolute"] + ["relative"] * len(menot_sorted) + ["total"]
+
+            fig_water = go.Figure(go.Waterfall(
+                name="Kassavirta", orientation="v", measure=measure, x=labels, y=values,
+                text=[f"{v:,.0f}" for v in values[:-1]] + [f"{jaama_avg:,.0f}"],
+                textposition="outside",
+                connector={"line":{"color":"#333"}}, decreasing={"marker":{"color":"#ef4444"}},
+                increasing={"marker":{"color":"#22c55e"}}, totals={"marker":{"color":"#3b82f6"}}
+            ))
+            st.plotly_chart(fig_water, use_container_width=True)
+
 
         with tab2:
             st.subheader("Kehitys kuukausittain")
@@ -148,6 +176,7 @@ else:
                 prof = {"ika": ika, "suhde": status, "lapset": lapset, "tavoite": tavoite_nimi, "varallisuus": varallisuus}
                 res = logiikka.analysoi_talous(df_avg, prof, "Toteuma")
                 st.markdown(f'<div style="background-color: white; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0;">{res}</div>', unsafe_allow_html=True)
+
 
 
 

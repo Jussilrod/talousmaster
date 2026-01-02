@@ -128,7 +128,7 @@ else:
                 st.metric(f"Salkun arvo {vuodet}v päästä", f"{df_sim.iloc[-1]['Yhteensä']:,.0f} €")
                 st.plotly_chart(px.area(df_sim, x="Vuosi", y=["Oma pääoma", "Tuotto"]), use_container_width=True)
 
-with tab4:
+        with tab4:
             st.subheader("💬 Kysy taloudestasi")
             
             # 1. Pikanapit heti otsikon alle
@@ -206,6 +206,7 @@ with tab4:
                             {res}
                         </div>
                     """, unsafe_allow_html=True)
+
 
 
 

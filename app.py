@@ -24,8 +24,8 @@ with st.sidebar:
     st.title("💎 Valikko")
     if os.path.exists("talous_pohja.xlsx"):
         with open("talous_pohja.xlsx", "rb") as file:
-            st.download_button(label="📥 Lataa tyhjä Excel-pohja", data=file, file_name="talous_tyokalu.xlsx", use_container_width=True)
-    uploaded_file = st.file_uploader("📂 Lataa täytetty Excel", type=['xlsx'])
+            st.download_button(label="📥 Lataa tyhjä Excel-pohja", data=file, file_name="talous_tyokalu.xlsx", use_container_width=True, key="dl_template")
+    uploaded_file = st.file_uploader("📂 Lataa täytetty Excel", type=['xlsx'], key="file_uploader")
     st.markdown("---")
     with st.expander("🔒 Tietoturva"):
         st.caption("Data käsitellään vain väliaikaisessa muistissa.")
@@ -57,8 +57,7 @@ else:
 
         st.write("")
 
-       # --- VÄLILEHDET ---
-        # Poistettu "Virtaus"-välilehti, pidetään alkuperäiset 5
+        # --- VÄLILEHDET ---
         tab1, tab2, tab3, tab4, tab5 = st.tabs([
             "📊 Yleiskuva", 
             "📈 Trendit", 
@@ -108,7 +107,6 @@ else:
 
 
         with tab2:
-                     
             # Sijoitetaan Sankey tänne trendien alle
             st.divider()
             st.subheader("Rahan virtausanalyysi")
@@ -139,9 +137,9 @@ else:
             st.caption("Pikatoiminnot:")
             p1, p2, p3 = st.columns(3)
             p_input = None
-            if p1.button("📊 Kuluanalyysi", use_container_width=True): p_input = "Analysoi suurimmat kulueryhmäni."
-            if p2.button("🔮 Simuloi +50€", use_container_width=True): p_input = "Miten 50€ lisäsäästö vaikuttaa 20 vuodessa?"
-            if p3.button("📝 Säästösuunnitelma", use_container_width=True): p_input = "Luo minulle säästösuunnitelma."
+            if p1.button("📊 Kuluanalyysi", use_container_width=True, key="btn_chat_kulu"): p_input = "Analysoi suurimmat kulueryhmäni."
+            if p2.button("🔮 Simuloi +50€", use_container_width=True, key="btn_chat_sim"): p_input = "Miten 50€ lisäsäästö vaikuttaa 20 vuodessa?"
+            if p3.button("📝 Säästösuunnitelma", use_container_width=True, key="btn_chat_plan"): p_input = "Luo minulle säästösuunnitelma."
 
             # 3. Chat-historia containerin sisään
             with chat_container:
@@ -173,19 +171,18 @@ else:
                 
                 c_a1, c_a2 = st.columns(2)
                 with c_a1:
-                    ika = st.number_input("Ikä", 18, 99, 30)
-                    lapset = st.number_input("Lapset", 0, 10, 0)
+                    ika = st.number_input("Ikä", 18, 99, 30, key="ana_ika")
+                    lapset = st.number_input("Lapset", 0, 10, 0, key="ana_lapset")
                 with c_a2:
-                    status = st.selectbox("Tilanne", ["Sinkku", "Perhe", "Yhteistalous"])
-                    varallisuus = st.number_input("Nykyinen varallisuus (€)", value=10000.0)
+                    status = st.selectbox("Tilanne", ["Sinkku", "Perhe", "Yhteistalous"], key="ana_status")
+                    varallisuus = st.number_input("Nykyinen varallisuus (€)", value=10000.0, key="ana_varat")
                 
-                tavoite_nimi = st.selectbox("Tavoite", ["Asunnon osto", "FIRE (Riippumattomuus)", "Puskurin kerryttäminen"])
-                tavoite_summa = st.number_input("Tavoitesumma (€)", value=50000.0)
+                tavoite_nimi = st.selectbox("Tavoite", ["Asunnon osto", "FIRE (Riippumattomuus)", "Puskurin kerryttäminen"], key="ana_tavoite")
+                tavoite_summa = st.number_input("Tavoitesumma (€)", value=50000.0, key="ana_summa")
                 
-                # HUOM: Poistettu 'use_container_width', jotta nappi on hillitympi
                 submit = st.form_submit_button("✨ Aja AI-Analyysi", type="primary")
 
-            # Analyysin näyttäminen lomakkeen ulkopuolella, jotta se pysyy näkyvissä
+            # Analyysin näyttäminen lomakkeen ulkopuolella
             if submit:
                 with st.spinner("Tekoäly laatii strategiaa..."):
                     prof = {
@@ -198,25 +195,8 @@ else:
                     res = logiikka.analysoi_talous(df_avg, prof, "Toteuma")
                     
                     st.divider()
-                    # Selkeä musta teksti valkoisella pohjalla (kuten toivoit)
                     st.markdown(f"""
                         <div style="background-color: white; padding: 30px; border-radius: 12px; border: 1px solid #e2e8f0; color: black;">
                             {res}
                         </div>
                     """, unsafe_allow_html=True)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

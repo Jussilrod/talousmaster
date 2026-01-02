@@ -64,7 +64,7 @@ else:
             "🔮 Simulaattori", 
             "💬 Chat", 
             "📝 Analyysi"
-        ])
+        ], key="paa_navigaatio")
 
         with tab1:
             r1, r2 = st.columns(2)
@@ -164,3 +164,4 @@ else:
                     st.markdown(f'<div style="background-color: white; padding: 30px; border-radius: 12px; border: 1px solid #e2e8f0; color: black;">{res}</div>', unsafe_allow_html=True)
     else:
         st.error("Datan luku epäonnistui.")
+

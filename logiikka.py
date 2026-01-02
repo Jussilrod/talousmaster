@@ -19,30 +19,37 @@ def konfiguroi_ai():
         return False
         
 def luo_sankey(tulot_summa, df_menot_avg, jaama):
-    # Luodaan selkeät nimet solmuille
+    # Luodaan värit kategorioille käyttäen Plotlyn valmista palettia
+    color_palette = px.colors.qualitative.Pastel
+    
     labels = ["Tulot"] + df_menot_avg['Selite'].tolist() + ["Säästöt/Jäämä"]
     
-    # Määritellään mistä mihin raha virtaa
+    # Määritellään värit solmuille
+    node_colors = [color_palette[i % len(color_palette)] for i in range(len(labels))]
+    
     sources = [0] * (len(df_menot_avg) + 1)
     targets = list(range(1, len(df_menot_avg) + 2))
     values = df_menot_avg['Summa'].tolist() + [max(0, jaama)]
 
     fig = go.Figure(data=[go.Sankey(
         node=dict(
-            pad=15, 
-            thickness=20, 
-            line=dict(color="black", width=0.5), 
-            label=labels, 
-            color="#3b82f6"
+            pad=20, # Lisää väliä solmujen välille tarkkuuden parantamiseksi
+            thickness=20,
+            line=dict(color="gray", width=0.5),
+            label=labels,
+            color=node_colors # Käytetään uusia värejä
         ),
         link=dict(
-            source=sources, 
-            target=targets, 
-            value=values, 
-            color="rgba(37, 99, 235, 0.2)"
+            source=sources,
+            target=targets,
+            value=values,
+            # Tehdään linkeistä solmun värisiä mutta läpinäkyviä
+            color=[node_colors[t].replace('rgb', 'rgba').replace(')', ', 0.3)') for t in targets]
         )
     )])
-    fig.update_layout(title_text="Rahan virtaus: Tulot -> Menot & Säästöt", font_size=12)
+    
+    # Säädetään korkeutta, jotta se ei ole niin "epätarkka"
+    fig.update_layout(height=600, font_size=12)
     return fig
 
 # --- EXCELIN LUKU ---
@@ -210,6 +217,7 @@ def chat_with_data(df, user_question, history):
         return response.text
     except:
         return "Virhe yhteydessä."
+
 
 
 

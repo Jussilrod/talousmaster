@@ -6,6 +6,7 @@ import plotly.express as px
 import os
 
 # --- KONFIGURAATIO ---
+@st.cache_resource
 def konfiguroi_ai():
     try:
         api_key = os.getenv("GOOGLE_API_KEY")
@@ -222,6 +223,7 @@ def chat_with_data(df, user_question, history):
         return response.text
     except:
         return "Virhe yhteydessä."
+
 
 
 

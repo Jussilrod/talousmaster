@@ -166,27 +166,46 @@ else:
                     st.session_state.messages.append({"role": "assistant", "content": resp})
 
         with tab5:
-            with st.form("analyysi_form"):
-                c_a1, c_a2 = st.columns(2)
-                ika = c_a1.number_input("Ikä", 18, 99, 30)
-                lapset = c_a1.number_input("Lapset", 0, 10, 0)
-                status = c_a2.selectbox("Tilanne", ["Sinkku", "Perhe", "Yhteistalous"])
-                varallisuus = c_a2.number_input("Nykyinen varallisuus (€)", value=10000.0)
-                tavoite_nimi = st.selectbox("Tavoite", ["Asunnon osto", "FIRE", "Puskuri"])
-                st.session_state.varallisuus_tavoite = st.number_input("Tavoitesumma (€)", value=50000.0)
-                submit = st.form_submit_button("✨ Aja AI-Analyysi", type="primary", use_container_width=True)
+            # Poistettu tavoitemittari käyttäjän toiveesta
             
-            # Tavoitemittari aina näkyvissä analyysivälilehdellä
-            st.divider()
-            prog = min(varallisuus / st.session_state.varallisuus_tavoite, 1.0)
-            st.write(f"**Edistyminen kohti tavoitetta ({tavoite_nimi}):**")
-            st.progress(prog)
-            st.caption(f"{varallisuus:,.0f}€ / {st.session_state.varallisuus_tavoite:,.0f}€ ({prog*100:.1f}%)")
+            with st.form("analyysi_form"):
+                st.markdown("### 📝 Varainhoitajan analyysi")
+                st.caption("Täytä tiedot ja pyydä tekoälyä laatimaan sinulle strategia.")
+                
+                c_a1, c_a2 = st.columns(2)
+                with c_a1:
+                    ika = st.number_input("Ikä", 18, 99, 30)
+                    lapset = st.number_input("Lapset", 0, 10, 0)
+                with c_a2:
+                    status = st.selectbox("Tilanne", ["Sinkku", "Perhe", "Yhteistalous"])
+                    varallisuus = st.number_input("Nykyinen varallisuus (€)", value=10000.0)
+                
+                tavoite_nimi = st.selectbox("Tavoite", ["Asunnon osto", "FIRE (Riippumattomuus)", "Puskurin kerryttäminen"])
+                tavoite_summa = st.number_input("Tavoitesumma (€)", value=50000.0)
+                
+                # HUOM: Poistettu 'use_container_width', jotta nappi on hillitympi
+                submit = st.form_submit_button("✨ Aja AI-Analyysi", type="primary")
 
+            # Analyysin näyttäminen lomakkeen ulkopuolella, jotta se pysyy näkyvissä
             if submit:
-                prof = {"ika": ika, "suhde": status, "lapset": lapset, "tavoite": tavoite_nimi, "varallisuus": varallisuus}
-                res = logiikka.analysoi_talous(df_avg, prof, "Toteuma")
-                st.markdown(f'<div style="background-color: white; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0;">{res}</div>', unsafe_allow_html=True)
+                with st.spinner("Tekoäly laatii strategiaa..."):
+                    prof = {
+                        "ika": ika, 
+                        "suhde": status, 
+                        "lapset": lapset, 
+                        "tavoite": tavoite_nimi, 
+                        "varallisuus": varallisuus
+                    }
+                    res = logiikka.analysoi_talous(df_avg, prof, "Toteuma")
+                    
+                    st.divider()
+                    # Selkeä musta teksti valkoisella pohjalla (kuten toivoit)
+                    st.markdown(f"""
+                        <div style="background-color: white; padding: 30px; border-radius: 12px; border: 1px solid #e2e8f0; color: black;">
+                            {res}
+                        </div>
+                    """, unsafe_allow_html=True)
+
 
 
 

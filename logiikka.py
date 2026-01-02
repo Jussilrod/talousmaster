@@ -16,6 +16,21 @@ def konfiguroi_ai():
         return False
     except:
         return False
+        
+# --- SANKEY Kaavio ---
+def luo_sankey_kaavio(tulot, df_menot, jaama):
+    # Luodaan linkit: Tulo -> Menot ja Tulo -> Säästö (jäämä)
+    labels = ["Tulot"] + df_menot['Selite'].tolist() + ["Säästöt/Jäämä"]
+    
+    sources = [0] * (len(df_menot) + 1) # Kaikki lähtevät Tulot-solmusta (0)
+    targets = list(range(1, len(df_menot) + 2))
+    values = df_menot['Summa'].tolist() + [max(0, jaama)]
+    
+    fig = go.Figure(data=[go.Sankey(
+        node=dict(pad=15, thickness=20, line=dict(color="black", width=0.5), label=labels, color="blue"),
+        link=dict(source=sources, target=targets, value=values, color="rgba(37, 99, 235, 0.2)")
+    )])
+    return fig
 
 # --- EXCELIN LUKU ---
 @st.cache_data
@@ -147,9 +162,13 @@ def analysoi_talous(df_avg, profiili, data_tyyppi):
         Jos lapsia on, huomioi se (esim. ruokakulut ovat luonnostaan korkeammat).
 
         ## 3. Toimenpidesuositus
-        Anna YKSI konkreettinen neuvo, joka auttaa saavuttamaan tavoitteen ({profiili['tavoite']}).
+        Anna YKSI konkreettinen neuvo. Muuta säästöpotentiaali "Kahvikuppi-indeksiksi" 
+        (esim. "Tämä säästö vastaa 12 noutokahvia kuukaudessa").
+
+        ## 4. Tehtävälista (Checklist)
+        Luo 3 kohdan interaktiivinen tehtävälista Markdown-muodossa [ ], jolla käyttäjä pääsee alkuun.
         
-        ## 4. Ennuste
+        ## 5. Ennuste
         Jos nykyinen säästötahti ({todellinen_saasto:.0f}€/kk) jatkuu, onko tavoite saavutettavissa?
 
         ## Arvosana (4-10)
@@ -178,6 +197,7 @@ def chat_with_data(df, user_question, history):
         return response.text
     except:
         return "Virhe yhteydessä."
+
 
 
 

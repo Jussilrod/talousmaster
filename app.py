@@ -114,18 +114,20 @@ else:
 
         with tab3:
             st.subheader("🔮 Miljonääri-simulaattori")
-            cs1, cs2 = st.columns([1,2])
-            with cs1:
-                # 'key' estää hyppimisen takaisin sivulle 1
-                kk_saasto = st.slider("Kuukausisäästö (€)", 0.0, 3000.0, float(max(jaama_avg, 0)), key="sim_kk")
-                vuodet = st.slider("Aika (v)", 1, 40, 20, key="sim_vuo")
-                korko = st.slider("Tuotto %", 1.0, 15.0, 7.0, key="sim_kor")
-                alkupotti = st.number_input("Alkupääoma (€)", 0, 1000000, 0, step=1000, key="sim_potti")
+            st.caption("Visualisoi korkoa korolle -ilmiön voima. Vihreä alue kuvaa sijoitusten tuottoa.")
+            
+            c_sim1, c_sim2 = st.columns([1,2])
+            with c_sim1:
+                # 'key'-parametrit on lisätty jokaiseen widgetiin hyppimisen estämiseksi
+                kk_saasto = st.slider("Kuukausisäästö (€)", 0.0, 3000.0, float(max(jaama_avg, 0)), key="sim_kk_slider")
+                vuodet = st.slider("Aika (v)", 1, 40, 20, key="sim_vuo_slider")
+                korko = st.slider("Tuotto %", 1.0, 15.0, 7.0, key="sim_kor_slider")
+                alkupotti = st.number_input("Alkupääoma (€)", 0, 1000000, 0, step=1000, key="sim_potti_input")
             with cs2:
                 df_sim = logiikka.laske_tulevaisuus(alkupotti, kk_saasto, korko, vuodet)
                 st.metric(f"Salkun arvo {vuodet}v päästä", f"{df_sim.iloc[-1]['Yhteensä']:,.0f} €")
                 st.plotly_chart(px.area(df_sim, x="Vuosi", y=["Oma pääoma", "Tuotto"]), use_container_width=True)
-
+        
         with tab4:
             st.subheader("💬 Kysy taloudestasi")
             
@@ -200,3 +202,4 @@ else:
                             {res}
                         </div>
                     """, unsafe_allow_html=True)
+

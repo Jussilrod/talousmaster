@@ -22,23 +22,80 @@ logiikka.konfiguroi_ai()
 # --- SIVUPALKKI ---
 with st.sidebar:
     st.title("💎 Valikko")
-    if os.path.exists("talous_pohja.xlsx"):
-        with open("talous_pohja.xlsx", "rb") as file:
-            st.download_button(label="📥 Lataa tyhjä Excel-pohja", data=file, file_name="talous_tyokalu.xlsx", width='stretch', key="dl_pohja")
-    uploaded_file = st.file_uploader("📂 Lataa täytetty Excel", type=['xlsx'], key="tiedosto_lataus")
+    
+    # 1. POHJAN LATAUS (UUSI)
+    # Tarkistetaan onko pohjatiedosto olemassa palvelimella
+    if os.path.exists(EXCEL_TEMPLATE_NAME):
+        with open(EXCEL_TEMPLATE_NAME, "rb") as file:
+            st.download_button(
+                label="📥 Lataa tyhjä Excel-pohja",
+                data=file,
+                file_name="talous_tyokalu.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True
+            )
+        st.markdown("---")
+    
+    # 2. OMAN TIEDOSTON LATAUS
+    uploaded_file = st.file_uploader("📂 Lataa täytetty Excel", type=['xlsx'])
+    
     st.markdown("---")
-    with st.expander("🔒 Tietoturva"):
-        st.caption("Data käsitellään vain väliaikaisessa muistissa.")
+    
+    # 3. TIETOTURVA (PÄIVITETTY)
+    with st.expander("🔒 Tietoturva & Yksityisyys", expanded=False):
+        st.markdown("""
+        <small style="color: #ef4444;">
+        ⚠️ **Suositus:** Älä syötä Exceliin henkilötietojasi tai tilinumeroita. Data käsitellään anonyymisti.
+        </small>
+        
+        ---
+        
+        **1. SSL-salaus:**
+        Yhteys tähän sovellukseen on suojattu (HTTPS/SSL), mikä tarkoittaa, että verkkoliikenne sinun ja palvelimen välillä on salattua.
+        
+        **2. Ei tallennusta:**
+        Lataamasi Excel käsitellään vain väliaikaisessa muistissa (RAM) istunnon ajan. Tiedostoa ei tallenneta tietokantaan.
+        
+        **3. Tietojen minimointi:**
+        Sovellus ei lisää tai kerää henkilötietoja. Tekoäly näkee vain Excelissä olevat luvut ja tekstit.
+        """, unsafe_allow_html=True)
+        
+    st.markdown("---")
+    st.caption("Vinkki: Täytä Exceliin kuukausisarakkeet (esim. Tammikuu, Helmikuu), niin näet trendit.")
 
-# --- OTSIKKO ---
-st.markdown('<div style="text-align: center;"><h1 class="main-title">Tasku<span class="highlight-blue">Ekonomisti</span> 💎</h1><p class="slogan">Ota taloutesi hallintaan datalla ja tekoälyllä</p></div>', unsafe_allow_html=True)
+# --- OTSIKKO (AINA NÄKYVISSÄ) ---
+st.markdown("""
+<div style="text-align: center; margin-top: 10px; margin-bottom: 30px;">
+    <h1 class="main-title">Tasku<span class="highlight-blue">Ekonomisti</span> 💎</h1>
+    <p class="slogan">Ota taloutesi hallintaan datalla ja tekoälyllä</p>
+</div>
+""", unsafe_allow_html=True)
 
+# --- PÄÄNÄKYMÄ ---
+
+# 1. TILANNE: EI TIEDOSTOA (LASKEUTUMISSIVU)
 if not uploaded_file:
-    # Laskeutumissivu
     col1, col2, col3 = st.columns([1, 3, 1])
     with col2:
-        st.markdown('<div style="text-align: center; background-color: #f8fafc; padding: 20px; border-radius: 10px; border: 1px solid #e2e8f0;"><h3>👋 Tervetuloa!</h3><p>Lataa pohja, täytä tiedot ja palauta se tähän.</p></div><br>', unsafe_allow_html=True)
-        st.video("https://videos.pexels.com/video-files/3129671/3129671-hd_1920_1080_30fps.mp4")
+        st.markdown("""
+        <div style="text-align: center; background-color: #f8fafc; padding: 20px; border-radius: 10px; border: 1px solid #e2e8f0;">
+            <h3>👋 Tervetuloa!</h3>
+            <p>Tämä työkalu auttaa sinua ymmärtämään rahavirtojasi, ennustamaan vaurastumista ja löytämään säästökohteita tekoälyn avulla.</p>
+            <p><strong>1. Lataa tyhjä pohja sivupalkista.</strong><br>
+            <strong>2. Täytä tietosi.</strong><br>
+            <strong>3. Lataa täytetty tiedosto takaisin.</strong></p>
+        </div>
+        <br>
+        """, unsafe_allow_html=True)
+
+        video_path = "esittely.mp4"
+        if os.path.exists(video_path):
+            st.video(video_path, autoplay=True, muted=True)
+        else:
+            st.video("https://videos.pexels.com/video-files/3129671/3129671-hd_1920_1080_30fps.mp4", autoplay=True, muted=True)
+
+# 2. TILANNE: TIEDOSTO LADATTU (DASHBOARD)
+
 else:
     df_raw = logiikka.lue_kaksiosainen_excel(uploaded_file)
     if not df_raw.empty:
@@ -103,24 +160,33 @@ else:
             st.subheader("Rahan virtausanalyysi")
             st.plotly_chart(logiikka.luo_sankey(tulot_avg, df_avg[df_avg['Kategoria']=='Meno'], jaama_avg), width='stretch')
 
-        with tab3:
+         with tab3:
             st.subheader("🔮 Miljonääri-simulaattori")
-            c_sim1, c_sim2 = st.columns([1,2]) # Korjattu nimet
+            st.caption("Visualisoi korkoa korolle -ilmiön voima. Vihreä alue kuvaa sijoitusten tuottoa.")
+            
+            c_sim1, c_sim2 = st.columns([1,2])
             with c_sim1:
-                # 'key'-parametrit on lisätty hyppimisen estämiseksi
-                # TÄMÄ KORJAA POMPPIMISEN: Asetetaan oletusarvo muistiin, jos sitä ei vielä ole
-                if "sim_kk_2026" not in st.session_state:
-                    st.session_state["sim_kk_2026"] = float(max(jaama_avg, 0))
-                # Käytetään slideria ilman 'value'-parametria, koska 'key' hakee arvon session_statesta
-                kk_saasto = st.slider("Kuukausisäästö (€)", 0.0, 3000.0, key="sim_kk_2026")
-                vuodet = st.slider("Aika (v)", 1, 40, 20, key="sim_vuo_2026")
-                korko = st.slider("Tuotto %", 1.0, 15.0, 7.0, key="sim_kor_2026")
-                alkupotti = st.number_input("Alkupääoma (€)", 0, 1000000, 0, step=1000, key="sim_alku_2026")
-                
-            with c_sim2: 
+                oletus_saasto = float(max(jaama_avg, 50.0))
+                kk_saasto = st.slider("Kuukausisäästö (€)", 0.0, 3000.0, oletus_saasto, step=10.0)
+                vuodet = st.slider("Sijoitusaika (v)", 1, 40, 20)
+                korko = st.slider("Tuotto %", 1.0, 15.0, 7.0)
+                alkupotti = st.number_input("Alkupääoma (€)", 0, 1000000, 0, step=1000)
+            
+            with c_sim2:
                 df_sim = logiikka.laske_tulevaisuus(alkupotti, kk_saasto, korko, vuodet)
-                st.metric(f"Salkun arvo {vuodet}v päästä", f"{df_sim.iloc[-1]['Yhteensä']:,.0f} €")
-                st.plotly_chart(px.area(df_sim, x="Vuosi", y=["Oma pääoma", "Tuotto"]), width='stretch')
+                
+                loppusumma = df_sim.iloc[-1]['Yhteensä']
+                loppu_tuotto = df_sim.iloc[-1]['Tuotto']
+                st.metric(f"Salkun arvo {vuodet}v päästä", f"{loppusumma:,.0f} €", delta=f"Tuottoa: {loppu_tuotto:,.0f} €")
+                
+                # Pinottu aluekaavio
+                fig_area = px.area(
+                    df_sim, x="Vuosi", y=["Oma pääoma", "Tuotto"],
+                    color_discrete_map={"Oma pääoma": "#94a3b8", "Tuotto": "#22c55e"}
+                )
+                fig_area.update_layout(hovermode="x unified", yaxis_title="Euroa (€)")
+                st.plotly_chart(fig_area, use_container_width=True)
+
 
         with tab4:
             st.subheader("💬 Kysy taloudestasi")
@@ -169,6 +235,7 @@ else:
                     st.markdown(f'<div style="background-color: white; padding: 30px; border-radius: 12px; border: 1px solid #e2e8f0; color: black;">{res}</div>', unsafe_allow_html=True)
     else:
         st.error("Datan luku epäonnistui.")
+
 
 
 

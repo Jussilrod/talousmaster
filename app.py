@@ -173,34 +173,31 @@ else:
            
             st.subheader("Kehitys kuukausittain")
             if kk_lkm > 1:
-                # 1. Määritellään oikea järjestys tiedostosi lyhenteiden mukaan
-                kk_map = {
-                    'Tammi': 1, 'Helmi': 2, 'Maalis': 3, 'Huhti': 4,
-                    'Touko': 5, 'Kesä': 6, 'Heinä': 7, 'Elo': 8,
-                    'Syys': 9, 'Loka': 10, 'Marras': 11, 'Joulu': 12
-                }
+                # 1. Määritellään kalenterijärjestys tiedostosi perusteella
+                kuukaudet_oikein = [
+                    'Tammi', 'Helmi', 'Maalis', 'Huhti', 'Touko', 'Kesä', 
+                    'Heinä', 'Elo', 'Syys', 'Loka', 'Marras', 'Joulu'
+                ]
                 
                 # 2. Ryhmitellään data
                 df_trend = df_raw.groupby(['Kuukausi', 'Kategoria'])['Summa'].sum().reset_index()
                 
-                # 3. Luodaan numeerinen apusarake lajittelua varten
-                df_trend['kk_num'] = df_trend['Kuukausi'].map(kk_map)
-                
-                # 4. Lajitellaan data kronologisesti ennen piirtämistä
-                df_trend = df_trend.sort_values(by='kk_num')
-                
-                # 5. Piirretään kaavio
+                # 3. Piirretään kuvaaja ja pakotetaan X-akselin järjestys
                 fig_trend = px.line(
                     df_trend, 
                     x='Kuukausi', 
                     y='Summa', 
                     color='Kategoria', 
                     markers=True,
-                    category_orders={"Kuukausi": list(kk_map.keys())} # Varmistetaan X-akselin järjestys
+                    category_orders={"Kuukausi": kuukaudet_oikein} # TÄMÄ pakottaa oikean järjestyksen
                 )
+                
+                # 4. Päivitetään ulkoasu ja näytetään
+                fig_trend.update_layout(xaxis_title="Kuukausi", yaxis_title="Summa (€)")
                 st.plotly_chart(fig_trend, width='stretch')
             else:
-                st.warning("Trendit vaativat dataa useammalta kuukaudelta.")
+                st.warning("Trendit vaativat dataa useammalta kuukaudelta (esim. Tammi, Helmi...).")
+
         
 
         with tab3:
@@ -278,6 +275,7 @@ else:
                     st.markdown(f'<div style="background-color: white; padding: 30px; border-radius: 12px; border: 1px solid #e2e8f0; color: black;">{res}</div>', unsafe_allow_html=True)
     else:
         st.error("Datan luku epäonnistui.")
+
 
 
 

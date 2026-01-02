@@ -188,20 +188,34 @@ else:
            
             st.subheader("Kehitys kuukausittain")
             if kk_lkm > 1:
+                # 1. Ryhmitellään data
                 df_trend = df_raw.groupby(['Kuukausi', 'Kategoria'])['Summa'].sum().reset_index()
                 
-                # Pakotetaan Plotly käyttämään määrittelemäämme järjestystä
+                # 2. TÄMÄ KORJAA VIIVAN: Luodaan lajitteluavain
+                # Tehdään sanakirja, joka antaa jokaiselle kuukaudelle numeron 0-11
+                kk_idx_map = {nimi: i for i, nimi in enumerate(oikea_jarjestys)}
+                df_trend['kk_nro'] = df_trend['Kuukausi'].map(kk_idx_map)
+                
+                # 3. Lajitellaan DataFrame kronologiseen järjestykseen
+                df_trend = df_trend.sort_values(by='kk_nro')
+                
+                # 4. Piirretään kaavio
                 fig_trend = px.line(
                     df_trend, 
                     x='Kuukausi', 
                     y='Summa', 
                     color='Kategoria', 
                     markers=True,
-                    category_orders={"Kuukausi": oikea_jarjestys} # TÄMÄ korjaa järjestyksen
+                    category_orders={"Kuukausi": oikea_jarjestys} # Pitää akselin nätinä
                 )
+                
+                # Estetään Plotlya muuttamasta järjestystä uudelleen
+                fig_trend.update_xaxes(categoryorder='array', categoryarray=oikea_jarjestys)
+                
                 st.plotly_chart(fig_trend, width='stretch')
             else:
                 st.warning("Trendit vaativat dataa useammalta kuukaudelta.")
+            
         
 
         with tab3:
@@ -279,6 +293,7 @@ else:
                     st.markdown(f'<div style="background-color: white; padding: 30px; border-radius: 12px; border: 1px solid #e2e8f0; color: black;">{res}</div>', unsafe_allow_html=True)
     else:
         st.error("Datan luku epäonnistui.")
+
 
 
 

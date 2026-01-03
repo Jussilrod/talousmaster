@@ -35,23 +35,16 @@ with st.sidebar:
     st.markdown("---")
     uploaded_file = st.file_uploader("📂 Lataa täytetty Excel", type=['xlsx'])
     st.markdown("---")
-    # 3. TIETOTURVA (PALAUTETTU ALKUPERÄINEN)
+    # 3. TIETOTURVA (ALKUPERÄINEN)
     with st.expander("🔒 Tietoturva & Yksityisyys", expanded=False):
         st.markdown("""
         <small style="color: #ef4444;">
         ⚠️ **Suositus:** Älä syötä Exceliin henkilötietojasi tai tilinumeroita. Data käsitellään anonyymisti.
         </small>
-        
         ---
-        
-        **1. SSL-salaus:**
-        Yhteys tähän sovellukseen on suojattu (HTTPS/SSL), mikä tarkoittaa, että verkkoliikenne sinun ja palvelimen välillä on salattua.
-        
-        **2. Ei tallennusta:**
-        Lataamasi Excel käsitellään vain väliaikaisessa muistissa (RAM) istunnon ajan. Tiedostoa ei tallenneta tietokantaan.
-        
-        **3. Tietojen minimointi:**
-        Sovellus ei lisää tai kerää henkilötietoja. Tekoäly näkee vain Excelissä olevat luvut ja tekstit.
+        **1. SSL-salaus:** Yhteys on suojattu (HTTPS/SSL).
+        **2. Ei tallennusta:** Käsitellään vain RAM-muistissa istunnon ajan.
+        **3. Tietojen minimointi:** AI näkee vain luvut ja selitteet.
         """, unsafe_allow_html=True)
 
     st.markdown("---")
@@ -77,17 +70,10 @@ if not uploaded_file:
         """, unsafe_allow_html=True)
         if os.path.exists("kuva.png"):
             st.image("kuva.png", use_container_width=True)
-        else:
-            st.info("Lisää 'kuva.png' projektikansioon nähdäksesi tervetulokuvan.")
-
 else:
     df_raw = logiikka.lue_kaksiosainen_excel(uploaded_file)
     if not df_raw.empty:
-        kk_nimet_map = {
-            'kk_1': 'Tammi', 'kk_2': 'Helmi', 'kk_3': 'Maalis', 'kk_4': 'Huhti',
-            'kk_5': 'Touko', 'kk_6': 'Kesä', 'kk_7': 'Heinä', 'kk_8': 'Elo',
-            'kk_9': 'Syys', 'kk_10': 'Loka', 'kk_11': 'Marras', 'kk_12': 'Joulu'
-        }
+        kk_nimet_map = {'kk_1': 'Tammi', 'kk_2': 'Helmi', 'kk_3': 'Maalis', 'kk_4': 'Huhti', 'kk_5': 'Touko', 'kk_6': 'Kesä', 'kk_7': 'Heinä', 'kk_8': 'Elo', 'kk_9': 'Syys', 'kk_10': 'Loka', 'kk_11': 'Marras', 'kk_12': 'Joulu'}
         df_raw['Kuukausi'] = df_raw['Kuukausi'].replace(kk_nimet_map)
         oikea_jarjestys = ['Tammi', 'Helmi', 'Maalis', 'Huhti', 'Touko', 'Kesä', 'Heinä', 'Elo', 'Syys', 'Loka', 'Marras', 'Joulu']
         
@@ -100,24 +86,17 @@ else:
 
         # KPI KORTIT
         c1, c2, c3, c4 = st.columns(4)
-        m = [
-            ("Analysoitu", f"{kk_lkm} kk"), 
-            ("Tulot (kk)", logiikka.muotoile_suomi(tulot_avg)), 
-            ("Menot (kk)", logiikka.muotoile_suomi(menot_avg)), 
-            ("Jäämä (kk)", logiikka.muotoile_suomi(jaama_avg))
-        ]
+        m = [("Analysoitu", f"{kk_lkm} kk"), ("Tulot (kk)", logiikka.muotoile_suomi(tulot_avg)), ("Menot (kk)", logiikka.muotoile_suomi(menot_avg)), ("Jäämä (kk)", logiikka.muotoile_suomi(jaama_avg))]
         for i, col in enumerate([c1, c2, c3, c4]):
             col.markdown(f'<div class="kpi-card"><div class="kpi-label">{m[i][0]}</div><div class="kpi-value">{m[i][1]}</div></div>', unsafe_allow_html=True)
 
-        st.write("")
         tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Yleiskuva", "📈 Trendit", "🔮 Simulaattori", "💬 Chat", "📝 Analyysi"])
 
         with tab1:
             r1, r2 = st.columns(2)
             with r1:
                 st.subheader("Menojen rakenne")
-                fig_sun = px.sunburst(df_avg[df_avg['Kategoria']=='Meno'], path=['Kategoria', 'Selite'], values='Summa', 
-                                     color_discrete_sequence=logiikka.PASTEL_COLORS)
+                fig_sun = px.sunburst(df_avg[df_avg['Kategoria']=='Meno'], path=['Kategoria', 'Selite'], values='Summa', color_discrete_sequence=logiikka.PASTEL_COLORS)
                 st.plotly_chart(fig_sun, use_container_width=True)
             with r2:
                 st.subheader("Top 5 Kulut")
@@ -125,20 +104,13 @@ else:
                 fig_bar = px.bar(top5, x='Summa', y='Selite', orientation='h', text_auto='.0f')
                 fig_bar.update_traces(marker_color=logiikka.PASTEL_COLORS[2])
                 st.plotly_chart(fig_bar, use_container_width=True)
-
             st.divider()
             st.subheader("💰 Kassavirta")
             menot_sorted = df_avg[df_avg['Kategoria']=='Meno'].sort_values(by='Summa', ascending=False)
             labels = ["Tulot"] + menot_sorted['Selite'].tolist() + ["JÄÄMÄ"]
             values = [tulot_avg] + [x * -1 for x in menot_sorted['Summa'].tolist()] + [0]
             measure = ["absolute"] + ["relative"] * len(menot_sorted) + ["total"]
-            fig_water = go.Figure(go.Waterfall(
-                orientation="v", measure=measure, x=labels, y=values,
-                connector={"line":{"color":"#cbd5e1"}}, 
-                decreasing={"marker":{"color": "#fca5a5"}}, 
-                increasing={"marker":{"color": "#86efac"}}, 
-                totals={"marker":{"color": logiikka.PASTEL_COLORS[0]}}
-            ))
+            fig_water = go.Figure(go.Waterfall(orientation="v", measure=measure, x=labels, y=values, connector={"line":{"color":"#cbd5e1"}}, decreasing={"marker":{"color": "#fca5a5"}}, increasing={"marker":{"color": "#86efac"}}, totals={"marker":{"color": logiikka.PASTEL_COLORS[0]}}))
             st.plotly_chart(fig_water, use_container_width=True)
 
         with tab2:
@@ -151,12 +123,10 @@ else:
                 kk_idx_map = {nimi: i for i, nimi in enumerate(oikea_jarjestys)}
                 df_trend['kk_nro'] = df_trend['Kuukausi'].map(kk_idx_map)
                 df_trend = df_trend.sort_values(by='kk_nro')
-                fig_trend = px.line(df_trend, x='Kuukausi', y='Summa', color='Kategoria', markers=True,
-                                   color_discrete_sequence=[logiikka.PASTEL_COLORS[2], logiikka.PASTEL_COLORS[4]])
+                fig_trend = px.line(df_trend, x='Kuukausi', y='Summa', color='Kategoria', markers=True, color_discrete_sequence=[logiikka.PASTEL_COLORS[2], logiikka.PASTEL_COLORS[4]])
                 fig_trend.update_xaxes(categoryorder='array', categoryarray=oikea_jarjestys)
                 st.plotly_chart(fig_trend, use_container_width=True)
-            else:
-                st.warning("Trendit vaativat dataa useammalta kuukaudelta.")
+            else: st.warning("Trendit vaativat dataa useammalta kuukaudelta.")
 
         with tab3:
             st.subheader("🔮 Miljonääri-simulaattori")
@@ -170,8 +140,7 @@ else:
                 df_sim = logiikka.laske_tulevaisuus(alkupotti, kk_saasto, korko, vuodet)
                 loppusumma = df_sim.iloc[-1]['Yhteensä']
                 st.metric(f"Salkun arvo {vuodet} vuoden päästä", logiikka.muotoile_suomi(loppusumma))
-                fig_area = px.area(df_sim, x="Vuosi", y=["Oma pääoma", "Tuotto"],
-                                  color_discrete_sequence=[logiikka.PASTEL_COLORS[5], logiikka.PASTEL_COLORS[4]])
+                fig_area = px.area(df_sim, x="Vuosi", y=["Oma pääoma", "Tuotto"], color_discrete_sequence=[logiikka.PASTEL_COLORS[5], logiikka.PASTEL_COLORS[4]])
                 st.plotly_chart(fig_area, use_container_width=True)
 
         with tab4:
@@ -179,9 +148,9 @@ else:
             chat_cont = st.container()
             p_input = None
             p1, p2, p3 = st.columns(3)
-            if p1.button("📊 Kuluanalyysi", use_container_width=True): p_input = "Analysoi kulujani."
-            if p2.button("🔮 Simuloi +50€", use_container_width=True): p_input = "Miten 50€ lisäsäästö vaikuttaa?"
-            if p3.button("📝 Säästösuunnitelma", use_container_width=True): p_input = "Luo säästösuunnitelma."
+            if p1.button("📊 Kuluanalyysi"): p_input = "Analysoi kulujani."
+            if p2.button("🔮 Simuloi +50€"): p_input = "Miten 50€ lisäsäästö vaikuttaa?"
+            if p3.button("📝 Säästösuunnitelma"): p_input = "Luo säästösuunnitelma."
             with chat_cont:
                 for msg in st.session_state.messages:
                     with st.chat_message(msg["role"]): st.markdown(msg["content"])
@@ -199,12 +168,10 @@ else:
         with tab5:
             with st.form("analyysi_form"):
                 st.markdown("### 📝 Varainhoitajan analyysi")
-                # UUSI KONTEKSTIKYSYMYS
-                data_tyyppi = st.radio("Mitä dataa on syötetty?", ["Toteuma", "Budjetti"], horizontal=True)
+                data_tyyppi = st.radio("Datan tyyppi", ["Toteuma", "Budjetti"], horizontal=True)
                 c_a1, c_a2 = st.columns(2)
                 with c_a1:
-                    ika = st.number_input("Ikä", 18, 99, 30)
-                    lapset = st.number_input("Lapset", 0, 10, 0)
+                    ika, lapset = st.number_input("Ikä", 18, 99, 30), st.number_input("Lapset", 0, 10, 0)
                 with c_a2:
                     status = st.selectbox("Tilanne", ["Sinkku", "Parisuhteessa (yhteistalous)", "Parisuhteessa (erilliset)", "Lapsiperhe", "Yksinhuoltaja"])
                     varallisuus = st.number_input("Nykyinen varallisuus (€)", value=1000.0)
@@ -217,5 +184,4 @@ else:
                     res = logiikka.analysoi_talous(df_avg, prof, data_tyyppi, df_raw)
                     st.divider()
                     st.markdown(f'<div style="background-color: white; padding: 30px; border-radius: 12px; border: 1px solid #e2e8f0; color: black;">{res}</div>', unsafe_allow_html=True)
-    else:
-        st.error("Datan luku epäonnistui.")
+    else: st.error("Datan luku epäonnistui.")

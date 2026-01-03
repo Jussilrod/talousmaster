@@ -96,6 +96,7 @@ def analysoi_talous(df_avg, profiili, data_tyyppi, df_raw):
         ## 3. Strategiset suositukset
         Anna 2-3 parannusta + **Kahvikuppi-indeksi**: 150€ lisäsäästö/kk, 10v, 7% korko.
         ## 4. Checklist askeleille [ ]
+        Luo toimintasuunnitelma.
         ## 5. Matemaattinen ennuste
         ## Arvosana (4-10) Perustele.
         """
@@ -109,3 +110,4 @@ def chat_with_data(df, user_question, history):
         prompt = f"Vastaa lyhyesti kysymykseen datan perusteella.\nDATA: {data_summary}\nHISTORIA: {history}\nKYSYMYS: {user_question}"
         return model.generate_content(prompt).text
     except: return "Virhe yhteydessä."
+

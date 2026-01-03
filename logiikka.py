@@ -138,43 +138,45 @@ def analysoi_talous(df_avg, profiili, data_tyyppi):
         
         prompt = f"""
         ### ROLE
-        Toimit kokeneena yksityispankkiirina (Senior Private Banker). Tyylisi on analyyttinen, tarkka ja asiantunteva, mutta samalla empaattinen ja kannustava. Puhetyylisi on ammattimainen suomi.
+        Toimit Senior Private Banker -roolissa. Tehtäväsi on analysoida asiakkaan talousdataa. 
+        Tyylisi on analyyttinen, faktoihin perustuva ja ammattimaisen suora.
         
-        ### CONTEXT
-        Analysoit asiakkaan taloutta pohjautuen Excel-dataan. 
-        Asiakasprofiili:
-        - Ikä: [ika] vuotta
-        - Kotitalous: [suhde], lapsia [lapset]
-        - Päätavoite: [tavoite]
-        - Nettovarallisuus: [varallisuus] €
+        ### DATA-LÄHTEET (TIUKKA NOUDATUS)
+        Käytä VAIN alla olevia lukuja. Älä käytä yleisiä keskiarvoja tai keksi lukuja itse:
+        - Asiakkaan ikä: {profiili['ika']}
+        - Perhetilanne: {profiili['suhde']}, lapsia: {profiili['lapset']}
+        - Tavoite: {profiili['tavoite']}
+        - Nettovarallisuus: {profiili['varallisuus']} €
+        - Tulot: {tulot:.0f} €/kk
+        - Menot: {menot:.0f} €/kk
+        - Kuukausijäämä: {jaama:.0f} €/kk
+        - Säästöön/sijoituksiin menevä osuus: {todellinen_saasto:.0f} €/kk
+        - Talouden tila: {status_txt}
+        - Analysoitava aikaväli: {kk} kuukautta
         
-        Talousdata ([data_tyyppi]):
-        - Aikajakso: [kk] kuukauden toteuma
-        - Tulot: [tulot] €/kk
-        - Menot: [menot] €/kk
-        - Jäämä: [jaama] €/kk
-        - Todellinen säästöaste (sis. sijoitukset): [todellinen_saasto] €/kk
-        - Talouden tila: [status_txt]
+        ### TOP 5 KULUERÄT (EXCEL-DATASTA)
+        {kulut_txt}
         
-        Suurimmat kuluerät:
-        [kulut_txt]
+        ### TEHTÄVÄ
+        Luo Markdown-analyysi:
+        ## 1. Tilannekuva
+        Vertaa nykyistä säästöä ({todellinen_saasto:.0f} €/kk) asiakkaan tavoitteeseen. Onko tavoite realistinen?
         
-        ### TASK
-        Luo kattava talousanalyysi seuraavalla rakenteella:
+        ## 2. Kulurakenteen analyysi
+        Analysoi listattuja kulueriä. Huomioi erityisesti suurin erä.
         
-        1. **Tilannekuva**: Arvioi nykyhetkeä suhteessa asiakkaan tavoitteeseen ([tavoite]). Onko tavoite realistinen nykyisellä säästöasteella?
-        2. **Kulujen rakenne**: Analysoi TOP 5 kuluja. Tee huomioita mahdollisista säästökohteista tai poikkeamista.
-        3. **Toimenpidesuositukset**:
-            - Anna 3 konkreettista parannusehdotusta.
-            - **Kahvikuppi-indeksi**: Laske, kuinka paljon pieni, toistuva menoerä (esim. 5 €/pvä) kasvaisi 10 vuodessa 7 % korolla. Käytä tätä havainnollistamaan säästämisen voimaa.
-        4. **Tehtävälista [ ]**: Luo 3-5 kohdan checklist, jonka asiakas voi toteuttaa heti.
-        5. **Ennuste**: Arvioi varallisuuden kehitystä 5-10 vuoden säteellä perustuen nykyiseen säästöön ja nettovarallisuuteen.
-        6. **Arvosana**: Anna talouden hoidolle arvosana (4-10) ja lyhyt perustelu.
+        ## 3. Strategiset suositukset
+        - Anna 2-3 konkreettista parannusehdotusta.
+        - **Kahvikuppi-indeksi**: Laske mitä tapahtuisi, jos {jaama:.0f} euron jäämästä säästettäisiin vielä 150 €/kk lisää 10 vuoden ajan (7% korolla).
         
-        ### CONSTRAINTS
-        - Käytä Markdown-otsikoita (##).
-        - Ole rehellinen: jos talous on alijäämäinen, sano se suoraan mutta ratkaisukeskeisesti.
-        - Muotoile luvut selkeästi (esim. 1 250 €).
+        ## 4. Checklist askeleille [ ]
+        Luo toimintasuunnitelma.
+        
+        ## 5. Matemaattinen ennuste
+        Arvioi varallisuuden kehitystä perustuen {todellinen_saasto:.0f} €/kk säästöön ja nykyiseen {profiili['varallisuus']} € varallisuuteen.
+        
+        ## Arvosana (4-10)
+        Perustele lyhyesti.
         """
         response = model.generate_content(prompt)
         return response.text
@@ -190,6 +192,7 @@ def chat_with_data(df, user_question, history):
         return response.text
     except:
         return "Virhe yhteydessä."
+
 
 
 

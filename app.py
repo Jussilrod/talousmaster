@@ -35,16 +35,25 @@ with st.sidebar:
     st.markdown("---")
     uploaded_file = st.file_uploader("📂 Lataa täytetty Excel", type=['xlsx'])
     st.markdown("---")
+    # 3. TIETOTURVA (PALAUTETTU ALKUPERÄINEN)
     with st.expander("🔒 Tietoturva & Yksityisyys", expanded=False):
         st.markdown("""
         <small style="color: #ef4444;">
         ⚠️ **Suositus:** Älä syötä Exceliin henkilötietojasi tai tilinumeroita. Data käsitellään anonyymisti.
         </small>
-        <br>
-        **1. SSL-salaus:** Yhteys on suojattu (HTTPS).<br>
-        **2. Ei tallennusta:** Tiedosto käsitellään vain RAM-muistissa.<br>
-        **3. Tietojen minimointi:** AI näkee vain luvut ja selitteet.
+        
+        ---
+        
+        **1. SSL-salaus:**
+        Yhteys tähän sovellukseen on suojattu (HTTPS/SSL), mikä tarkoittaa, että verkkoliikenne sinun ja palvelimen välillä on salattua.
+        
+        **2. Ei tallennusta:**
+        Lataamasi Excel käsitellään vain väliaikaisessa muistissa (RAM) istunnon ajan. Tiedostoa ei tallenneta tietokantaan.
+        
+        **3. Tietojen minimointi:**
+        Sovellus ei lisää tai kerää henkilötietoja. Tekoäly näkee vain Excelissä olevat luvut ja tekstit.
         """, unsafe_allow_html=True)
+
     st.markdown("---")
     st.caption("Vinkki: Täytä kuukausisarakkeet nähdäksesi trendit.")
 
@@ -70,6 +79,7 @@ if not uploaded_file:
             st.image("kuva.png", use_container_width=True)
         else:
             st.info("Lisää 'kuva.png' projektikansioon nähdäksesi tervetulokuvan.")
+
 else:
     df_raw = logiikka.lue_kaksiosainen_excel(uploaded_file)
     if not df_raw.empty:
@@ -152,7 +162,7 @@ else:
             st.subheader("🔮 Miljonääri-simulaattori")
             c_sim1, c_sim2 = st.columns([1,2])
             with c_sim1:
-                kk_saasto = st.slider("Kuukausisäästö (€)", 0.0, 2000.0, float(max(jaama_avg, 50.0)), step=10.0)
+                kk_saasto = st.slider("Kuukausisäästö (€)", 0.0, 300.0, float(max(jaama_avg, 50.0)), step=10.0)
                 vuodet = st.slider("Sijoitusaika (v)", 1, 40, 20)
                 korko = st.slider("Tuotto %", 1.0, 15.0, 7.0)
                 alkupotti = st.number_input("Alkupääoma (€)", 0, 1000000, 0, step=1000)
@@ -189,7 +199,8 @@ else:
         with tab5:
             with st.form("analyysi_form"):
                 st.markdown("### 📝 Varainhoitajan analyysi")
-                data_tyyppi = st.radio("Datan tyyppi", ["Toteuma", "Budjetti"], horizontal=True, help="Onko kyse toteutuneista luvuista vai suunnitelmasta?")
+                # UUSI KONTEKSTIKYSYMYS
+                data_tyyppi = st.radio("Mitä dataa on syötetty?", ["Toteuma", "Budjetti"], horizontal=True)
                 c_a1, c_a2 = st.columns(2)
                 with c_a1:
                     ika = st.number_input("Ikä", 18, 99, 30)

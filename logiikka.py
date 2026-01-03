@@ -145,6 +145,10 @@ def analysoi_talous(df_avg, profiili, data_tyyppi):
         - **Kotitalous:** {profiili['suhde']}. Lapsia: {profiili['lapset']}.
         - **Päätavoite:** {profiili['tavoite']}
         - **Nettovarallisuus:** {profiili['varallisuus']} €
+
+
+        ### TUNNISTA AIKAJAKSO
+        kuinka monta {kuukausi} dataa annettu ja ymmärrä ajan konteksti
         
         ### TALOUDEN DATA ({data_tyyppi})
         - Tulot: {tulot:.0f} €/kk
@@ -179,5 +183,6 @@ def chat_with_data(df, user_question, history):
         return response.text
     except:
         return "Virhe yhteydessä."
+
 
 

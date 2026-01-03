@@ -35,25 +35,16 @@ with st.sidebar:
     st.markdown("---")
     uploaded_file = st.file_uploader("📂 Lataa täytetty Excel", type=['xlsx'])
     st.markdown("---")
-    # 3. TIETOTURVA (PÄIVITETTY)
     with st.expander("🔒 Tietoturva & Yksityisyys", expanded=False):
         st.markdown("""
         <small style="color: #ef4444;">
         ⚠️ **Suositus:** Älä syötä Exceliin henkilötietojasi tai tilinumeroita. Data käsitellään anonyymisti.
         </small>
-        
-        ---
-        
-        **1. SSL-salaus:**
-        Yhteys tähän sovellukseen on suojattu (HTTPS/SSL), mikä tarkoittaa, että verkkoliikenne sinun ja palvelimen välillä on salattua.
-        
-        **2. Ei tallennusta:**
-        Lataamasi Excel käsitellään vain väliaikaisessa muistissa (RAM) istunnon ajan. Tiedostoa ei tallenneta tietokantaan.
-        
-        **3. Tietojen minimointi:**
-        Sovellus ei lisää tai kerää henkilötietoja. Tekoäly näkee vain Excelissä olevat luvut ja tekstit.
+        <br>
+        **1. SSL-salaus:** Yhteys on suojattu (HTTPS).<br>
+        **2. Ei tallennusta:** Tiedosto käsitellään vain RAM-muistissa.<br>
+        **3. Tietojen minimointi:** AI näkee vain luvut ja selitteet.
         """, unsafe_allow_html=True)
-
     st.markdown("---")
     st.caption("Vinkki: Täytä kuukausisarakkeet nähdäksesi trendit.")
 
@@ -66,7 +57,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- PÄÄNÄKYMÄ ---
-
 if not uploaded_file:
     col1, col2, col3 = st.columns([1, 3, 1])
     with col2:
@@ -76,12 +66,10 @@ if not uploaded_file:
             <p>1. Lataa tyhjä pohja sivupalkista. 2. Täytä tietosi. 3. Lataa tiedosto takaisin.</p>
         </div><br>
         """, unsafe_allow_html=True)
-        # MUUTOS: Video korvattu kuvalla
         if os.path.exists("kuva.png"):
             st.image("kuva.png", use_container_width=True)
         else:
-            st.info("Lisää 'kuva.jpg' projektikansioon nähdäksesi tervetulokuvan.")
-
+            st.info("Lisää 'kuva.png' projektikansioon nähdäksesi tervetulokuvan.")
 else:
     df_raw = logiikka.lue_kaksiosainen_excel(uploaded_file)
     if not df_raw.empty:
@@ -100,7 +88,7 @@ else:
         menot_avg = df_avg[df_avg['Kategoria']=='Meno']['Summa'].sum()
         jaama_avg = tulot_avg - menot_avg
 
-        # KPI KORTIT (Muotoiltu suomalaisittain)
+        # KPI KORTIT
         c1, c2, c3, c4 = st.columns(4)
         m = [
             ("Analysoitu", f"{kk_lkm} kk"), 
@@ -118,7 +106,6 @@ else:
             r1, r2 = st.columns(2)
             with r1:
                 st.subheader("Menojen rakenne")
-                # MUUTOS: Käytetään pastellivärejä
                 fig_sun = px.sunburst(df_avg[df_avg['Kategoria']=='Meno'], path=['Kategoria', 'Selite'], values='Summa', 
                                      color_discrete_sequence=logiikka.PASTEL_COLORS)
                 st.plotly_chart(fig_sun, use_container_width=True)
@@ -126,7 +113,6 @@ else:
                 st.subheader("Top 5 Kulut")
                 top5 = df_avg[df_avg['Kategoria']=='Meno'].sort_values('Summa', ascending=False).head(5)
                 fig_bar = px.bar(top5, x='Summa', y='Selite', orientation='h', text_auto='.0f')
-                # MUUTOS: Yhtenäinen pastelliväri (Sankeyn sävy)
                 fig_bar.update_traces(marker_color=logiikka.PASTEL_COLORS[2])
                 st.plotly_chart(fig_bar, use_container_width=True)
 
@@ -136,12 +122,11 @@ else:
             labels = ["Tulot"] + menot_sorted['Selite'].tolist() + ["JÄÄMÄ"]
             values = [tulot_avg] + [x * -1 for x in menot_sorted['Summa'].tolist()] + [0]
             measure = ["absolute"] + ["relative"] * len(menot_sorted) + ["total"]
-            # MUUTOS: Pehmeämmät värit waterfalliin
             fig_water = go.Figure(go.Waterfall(
                 orientation="v", measure=measure, x=labels, y=values,
                 connector={"line":{"color":"#cbd5e1"}}, 
-                decreasing={"marker":{"color": "#fca5a5"}}, # Pehmeä punainen
-                increasing={"marker":{"color": "#86efac"}}, # Pehmeä vihreä
+                decreasing={"marker":{"color": "#fca5a5"}}, 
+                increasing={"marker":{"color": "#86efac"}}, 
                 totals={"marker":{"color": logiikka.PASTEL_COLORS[0]}}
             ))
             st.plotly_chart(fig_water, use_container_width=True)
@@ -156,7 +141,6 @@ else:
                 kk_idx_map = {nimi: i for i, nimi in enumerate(oikea_jarjestys)}
                 df_trend['kk_nro'] = df_trend['Kuukausi'].map(kk_idx_map)
                 df_trend = df_trend.sort_values(by='kk_nro')
-                # MUUTOS: Pastellivärit viivoihin
                 fig_trend = px.line(df_trend, x='Kuukausi', y='Summa', color='Kategoria', markers=True,
                                    color_discrete_sequence=[logiikka.PASTEL_COLORS[2], logiikka.PASTEL_COLORS[4]])
                 fig_trend.update_xaxes(categoryorder='array', categoryarray=oikea_jarjestys)
@@ -168,7 +152,7 @@ else:
             st.subheader("🔮 Miljonääri-simulaattori")
             c_sim1, c_sim2 = st.columns([1,2])
             with c_sim1:
-                kk_saasto = st.slider("Kuukausisäästö (€)", 0.0, 300.0, float(max(jaama_avg, 50.0)), step=10.0)
+                kk_saasto = st.slider("Kuukausisäästö (€)", 0.0, 2000.0, float(max(jaama_avg, 50.0)), step=10.0)
                 vuodet = st.slider("Sijoitusaika (v)", 1, 40, 20)
                 korko = st.slider("Tuotto %", 1.0, 15.0, 7.0)
                 alkupotti = st.number_input("Alkupääoma (€)", 0, 1000000, 0, step=1000)
@@ -176,7 +160,6 @@ else:
                 df_sim = logiikka.laske_tulevaisuus(alkupotti, kk_saasto, korko, vuodet)
                 loppusumma = df_sim.iloc[-1]['Yhteensä']
                 st.metric(f"Salkun arvo {vuodet} vuoden päästä", logiikka.muotoile_suomi(loppusumma))
-                # MUUTOS: Aluekaavion värit (Pastel)
                 fig_area = px.area(df_sim, x="Vuosi", y=["Oma pääoma", "Tuotto"],
                                   color_discrete_sequence=[logiikka.PASTEL_COLORS[5], logiikka.PASTEL_COLORS[4]])
                 st.plotly_chart(fig_area, use_container_width=True)
@@ -206,6 +189,7 @@ else:
         with tab5:
             with st.form("analyysi_form"):
                 st.markdown("### 📝 Varainhoitajan analyysi")
+                data_tyyppi = st.radio("Datan tyyppi", ["Toteuma", "Budjetti"], horizontal=True, help="Onko kyse toteutuneista luvuista vai suunnitelmasta?")
                 c_a1, c_a2 = st.columns(2)
                 with c_a1:
                     ika = st.number_input("Ikä", 18, 99, 30)
@@ -218,14 +202,9 @@ else:
                 submit = st.form_submit_button("✨ Aja AI-Analyysi", type="primary")
             if submit:
                 with st.spinner("AI analysoi..."):
-                    prof = {"ika": ika, "suhde": status, "lapset": lapset, "tavoite": tavoite_nimi, "varallisuus": varallisuus}
-                    res = logiikka.analysoi_talous(df_avg, prof, "Toteuma")
+                    prof = {"ika": ika, "suhde": status, "lapset": lapset, "tavoite": tavoite_nimi, "varallisuus": varallisuus, "tavoite_summa": tavoite_summa}
+                    res = logiikka.analysoi_talous(df_avg, prof, data_tyyppi, df_raw)
                     st.divider()
                     st.markdown(f'<div style="background-color: white; padding: 30px; border-radius: 12px; border: 1px solid #e2e8f0; color: black;">{res}</div>', unsafe_allow_html=True)
     else:
         st.error("Datan luku epäonnistui.")
-
-
-
-
-

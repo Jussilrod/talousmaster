@@ -134,7 +134,7 @@ def analysoi_talous(df_avg, profiili, data_tyyppi):
         elif todellinen_saasto > 500: status_txt = "Vahva (Ylijäämäinen)"
         else: status_txt = "Tasapainoilija (Nollatulos)"
 
-        model = genai.GenerativeModel('gemini-1.5-flash-latest') # Päivitetty vakaampaan versioon
+        model = genai.GenerativeModel('gemini-3-flash') # Päivitetty vakaampaan versioon
         
         prompt = f"""
         ### ROLE
@@ -179,3 +179,4 @@ def chat_with_data(df, user_question, history):
         return response.text
     except:
         return "Virhe yhteydessä."
+

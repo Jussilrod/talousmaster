@@ -17,7 +17,7 @@ def muotoile_suomi(luku):
 @st.cache_resource
 def konfiguroi_ai():
     try:
-        api_key = os.getenv("GOOGLE_API_KEY") or st.secrets.get("GOOGLE_API_KEY")
+        api_key = os.getenv("GOOGLE_API_KEY") or (st.secrets["GOOGLE_API_KEY"] if "GOOGLE_API_KEY" in st.secrets else None)
         if api_key:
             genai.configure(api_key=api_key)
             return True
@@ -34,9 +34,19 @@ def luo_sankey(tulot_summa, df_menot_avg, jaama):
     values = df_menot_avg['Summa'].tolist() + [max(0, jaama)]
 
     fig = go.Figure(data=[go.Sankey(
-        node=dict(pad=20, thickness=20, line=dict(color="gray", width=0.5), label=labels, color=node_colors),
-        link=dict(source=sources, target=targets, value=values,
-                  color=[node_colors[t].replace('rgb', 'rgba').replace(')', ', 0.3)') for t in targets])
+        node=dict(
+            pad=20, 
+            thickness=20,
+            line=dict(color="gray", width=0.5),
+            label=labels,
+            color=node_colors 
+        ),
+        link=dict(
+            source=sources,
+            target=targets,
+            value=values,
+            color=[node_colors[t].replace('rgb', 'rgba').replace(')', ', 0.3)') for t in targets]
+        )
     )])
     fig.update_layout(height=600, font_size=12, margin=dict(t=20, b=20))
     return fig
@@ -46,8 +56,12 @@ def lue_kaksiosainen_excel(file):
     try:
         df = pd.read_excel(file, header=None)
         col_b = df.iloc[:, 1].astype(str)
-        tulot_idx = df[col_b.str.contains("Tulot", na=False, case=False)].index[0]
-        menot_idx = df[col_b.str.contains("Menot", na=False, case=False)].index[0]
+        try:
+            tulot_idx = df[col_b.str.contains("Tulot", na=False, case=False)].index[0]
+            menot_idx = df[col_b.str.contains("Menot", na=False, case=False)].index[0]
+        except IndexError:
+            return pd.DataFrame()
+
         header_row_idx = tulot_idx - 1 if tulot_idx > 0 else 0
         headers = df.iloc[header_row_idx]
         data_rows = []
@@ -59,14 +73,15 @@ def lue_kaksiosainen_excel(file):
                 if "Yhteensä" in selite or selite == "nan": continue
                 for col_idx in range(2, df.shape[1]):
                     val = pd.to_numeric(row[col_idx], errors='coerce')
-                    col_name = str(headers[col_idx])
+                    col_name = str(headers[col_idx]) if pd.notna(headers[col_idx]) else f"kk_{col_idx-1}"
+                    if col_name == "nan": continue
                     if pd.notna(val) and val > 0:
                         data_rows.append({"Kategoria": kategoria, "Selite": selite, "Kuukausi": col_name, "Summa": round(val, 2)})
 
         process_section(tulot_idx + 2, menot_idx, "Tulo")
         process_section(menot_idx + 2, len(df), "Meno")
         return pd.DataFrame(data_rows)
-    except:
+    except Exception:
         return pd.DataFrame()
 
 def laske_tulevaisuus(aloitussumma, kk_saasto, korko_pros, vuodet):
@@ -75,12 +90,18 @@ def laske_tulevaisuus(aloitussumma, kk_saasto, korko_pros, vuodet):
     oma_paaoma = aloitussumma 
     kk_korko = (korko_pros / 100) / 12
     data.append({"Vuosi": 0, "Oma pääoma": aloitussumma, "Tuotto": 0, "Yhteensä": aloitussumma})
+
     for kk in range(1, vuodet * 12 + 1):
         saldo += kk_saasto
         oma_paaoma += kk_saasto
         saldo *= (1 + kk_korko)
         if kk % 12 == 0: 
-            data.append({"Vuosi": int(kk / 12), "Oma pääoma": round(oma_paaoma, 0), "Tuotto": round(saldo - oma_paaoma, 0), "Yhteensä": round(saldo, 0)})
+            data.append({
+                "Vuosi": int(kk / 12),
+                "Oma pääoma": round(oma_paaoma, 0),
+                "Tuotto": round(saldo - oma_paaoma, 0),
+                "Yhteensä": round(saldo, 0)
+            })
     return pd.DataFrame(data)
 
 def analysoi_talous(df_avg, profiili, data_tyyppi, df_raw):
@@ -90,43 +111,55 @@ def analysoi_talous(df_avg, profiili, data_tyyppi, df_raw):
         menot = df_avg[df_avg['Kategoria']=='Meno']['Summa'].sum()
         jaama = tulot - menot
         
+        sijoitukset_summa = 0
         sijoitus_keywords = ['sijoitus', 'rahasto', 'osake', 'säästö', 'nordnet', 'etf']
-        sijoitukset_summa = df_avg[(df_avg['Kategoria']=='Meno') & (df_avg['Selite'].str.lower().str.contains('|'.join(sijoitus_keywords), na=False))]['Summa'].sum()
+        for _, row in df_avg[df_avg['Kategoria']=='Meno'].iterrows():
+             if any(x in str(row['Selite']).lower() for x in sijoitus_keywords):
+                 sijoitukset_summa += row['Summa']
+        
         todellinen_saasto = jaama + sijoitukset_summa
-        top_menot = df_avg[df_avg['Kategoria']=='Meno'].nlargest(5, 'Summa').to_string(index=False)
+        top_menot = df_avg[df_avg['Kategoria']=='Meno'].nlargest(5, 'Summa')
+        kulut_txt = top_menot.to_string(index=False)
 
-        model = genai.GenerativeModel('gemini-2.5-flash')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
         prompt = f"""
         ### ROLE
-        Toimit Senior Private Banker -roolissa. Analysoit asiakkaan talousdataa, tyyppi: **{data_tyyppi.upper()}**.
-
-        ### OHJEET
-        - JOS tyyppi on 'Budjetti': Arvioi suunnitelman realistisuutta.
-        - JOS tyyppi on 'Toteuma': Arvioi kurinalaisuutta.
-
-        ### DATA
-        - Aikaväli: {kk_lkm} kuukautta.
-        - Asiakas: {profiili['ika']}v, {profiili['suhde']}, {profiili['lapset']} lasta.
-        - Tavoite: {profiili['tavoite']} (Tavoitesumma: {profiili['tavoite_summa']} €).
-        - Tulot: {tulot:.0f} €/kk | Menot: {menot:.0f} €/kk | Jäämä: {jaama:.0f} €/kk.
-        - Todellinen säästö (sis. sijoitukset): {todellinen_saasto:.0f} €/kk.
-        - TOP 5 MENOT: {top_menot}
-
-        ### TEHTÄVÄ
-        Luo analyysi:
-        ## 1. Tilannekuva ({data_tyyppi})
-        Analysoi {kk_lkm} kk datan kattavuus ja realistisuus suhteessa tavoitteeseen.
+        Toimit Senior Private Banker -roolissa. Tehtäväsi on analysoida asiakkaan talousdataa, joka on tyypiltään {data_tyyppi}.
+        Tyylisi on analyyttinen, faktoihin perustuva ja ammattimaisen suora.
         
-        ## 2. Kulurakenne & Vuositason ennuste
-        Analysoi suurimpia eriä ja skaalaa ne 12 kk tasolle.
+        ### KONTEKSTI JA DATA
+        - Analysoitu aikaväli: {kk_lkm} kuukautta (Tärkeää: Huomioi tämä analyysissa!)
+        - Asiakkaan ikä: {profiili['ika']}
+        - Perhetilanne: {profiili['suhde']}, lapsia: {profiili['lapset']}
+        - Tavoite: {profiili['tavoite']} ({profiili.get('tavoite_summa', 0)} €)
+        - Nettovarallisuus nyt: {profiili['varallisuus']} €
+        - Tulot keskimäärin: {tulot:.0f} €/kk
+        - Menot keskimäärin: {menot:.0f} €/kk
+        - Kuukausijäämä: {jaama:.0f} €/kk
+        - Säästöön/sijoituksiin menevä osuus: {todellinen_saasto:.0f} €/kk
+        
+        ### TOP 5 KULUERÄT
+        {kulut_txt}
+        
+        ### TEHTÄVÄ
+        Luo Markdown-analyysi:
+        ## 1. Tilannekuva ({data_tyyppi})
+        Analysoi {kk_lkm} kuukauden datan edustavuutta. Vertaa nykyistä {todellinen_saasto:.0f} €/kk säästöä tavoitteeseen.
+        
+        ## 2. Kulurakenteen analyysi
+        Analysoi suurimpia eriä ja lukuja vuositasolla (12 x kk).
         
         ## 3. Strategiset suositukset
-        Anna 2-3 konkreettista parannusta.
-        **Kahvikuppi-indeksi**: Laske 150 €/kk lisäsäästön vaikutus 10 vuodessa (7% korko).
+        - Anna 2-3 konkreettista parannusehdotusta.
+        - **Kahvikuppi-indeksi**: Laske mitä tapahtuisi, jos jäämästä säästettäisiin vielä 150 €/kk lisää 10 vuoden ajan (7% korolla).
         
         ## 4. Checklist askeleille [ ]
-        ## 5. Matemaattinen ennuste (Varallisuuden kehitys)
+        Luo toimintasuunnitelma.
+        
+        ## 5. Matemaattinen ennuste
+        Arvioi varallisuuden kehitystä perustuen {todellinen_saasto:.0f} €/kk säästöön.
+        
         ## Arvosana (4-10)
         Perustele lyhyesti.
         """
@@ -137,11 +170,10 @@ def analysoi_talous(df_avg, profiili, data_tyyppi, df_raw):
 
 def chat_with_data(df, user_question, history):
     try:
-        model = genai.GenerativeModel('gemini-2.5-flash-lite')
+        model = genai.GenerativeModel('gemini-1.5-flash-lite')
         data_summary = df.head(50).to_string(index=False)
         prompt = f"Vastaa lyhyesti kysymykseen datan perusteella.\nDATA: {data_summary}\nHISTORIA: {history}\nKYSYMYS: {user_question}"
         response = model.generate_content(prompt)
         return response.text
     except:
         return "Virhe yhteydessä."
-

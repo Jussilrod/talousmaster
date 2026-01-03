@@ -114,71 +114,65 @@ def laske_tulevaisuus(aloitussumma, kk_saasto, korko_pros, vuodet):
             })
     return pd.DataFrame(data)
 
-def analysoi_talous(df_avg, profiili, data_tyyppi,kk_lkm):
+def analysoi_talous(df_avg, profiili, data_tyyppi, df_raw):
     try:
+        # Lasketaan muuttujat
+        kk_lkm = df_raw['Kuukausi'].nunique()
         tulot = df_avg[df_avg['Kategoria']=='Tulo']['Summa'].sum()
         menot = df_avg[df_avg['Kategoria']=='Meno']['Summa'].sum()
         jaama = tulot - menot
         
-        kk = kk_lkm['Kuukausi'].nunique()
-        
-        sijoitukset_summa = 0
         sijoitus_keywords = ['sijoitus', 'rahasto', 'osake', 'säästö', 'nordnet', 'op-tuotto', 'ostot', 'etf']
-        for _, row in df_avg[df_avg['Kategoria']=='Meno'].iterrows():
-             if any(x in str(row['Selite']).lower() for x in sijoitus_keywords):
-                 sijoitukset_summa += row['Summa']
+        sijoitukset_summa = df_avg[(df_avg['Kategoria']=='Meno') & 
+                                   (df_avg['Selite'].str.lower().str.contains('|'.join(sijoitus_keywords), na=False))]['Summa'].sum()
         
         todellinen_saasto = jaama + sijoitukset_summa
-        top_menot = df_avg[df_avg['Kategoria']=='Meno'].nlargest(5, 'Summa')
-        kulut_txt = top_menot.to_string(index=False)
-
-        if jaama < 0: status_txt = "Kriittinen (Alijäämäinen)"
-        elif todellinen_saasto > 500: status_txt = "Vahva (Ylijäämäinen)"
-        else: status_txt = "Tasapainoilija (Nollatulos)"
-
-        model = genai.GenerativeModel('gemini-2.5-flash') # Päivitetty vakaampaan versioon
+        top_menot = df_avg[df_avg['Kategoria']=='Meno'].nlargest(5, 'Summa').to_string(index=False)
         
+        model = genai.GenerativeModel('gemini-2.0-flash')
+
         prompt = f"""
         ### ROLE
         Toimit Senior Private Banker -roolissa. Tehtäväsi on analysoida asiakkaan talousdataa. 
         Tyylisi on analyyttinen, faktoihin perustuva ja ammattimaisen suora.
-        
+
         ### DATA-LÄHTEET (TIUKKA NOUDATUS)
-        Käytä VAIN alla olevia lukuja. Älä käytä yleisiä keskiarvoja tai keksi lukuja itse:
+        - Analysoitu aikaväli: {kk_lkm} kuukautta (HUOMIOI TÄMÄ ANALYYSISSA)
         - Asiakkaan ikä: {profiili['ika']}
         - Perhetilanne: {profiili['suhde']}, lapsia: {profiili['lapset']}
         - Tavoite: {profiili['tavoite']}
         - Nettovarallisuus: {profiili['varallisuus']} €
-        - Tulot: {tulot:.0f} €/kk
-        - Menot: {menot:.0f} €/kk
+        - Keskimääräiset tulot: {tulot:.0f} €/kk
+        - Keskimääräiset menot: {menot:.0f} €/kk
         - Kuukausijäämä: {jaama:.0f} €/kk
-        - Säästöön/sijoituksiin menevä osuus: {todellinen_saasto:.0f} €/kk
-        - Talouden tila: {status_txt}
-        - Analysoitava aikaväli: {kk} kuukautta
+        - Todellinen säästö (sis. sijoitukset): {todellinen_saasto:.0f} €/kk
         
-        ### TOP 5 KULUERÄT (EXCEL-DATASTA)
-        {kulut_txt}
-        
+        TOP 5 KULUERÄT:
+        {top_menot}
+
         ### TEHTÄVÄ
-        Luo Markdown-analyysi:
-        ## 1. Tilannekuva
-        Vertaa nykyistä säästöä ({todellinen_saasto:.0f} €/kk) asiakkaan tavoitteeseen. Onko tavoite realistinen?
-        
+        Luo Markdown-analyysi, joka sisältää seuraavat osiot:
+
+        ## 1. Tilannekuva & Aikaväli
+        - Kommentoi datan kattavuutta ({kk_lkm} kk). Onko otos riittävä ennusteisiin?
+        - Vertaa nykyistä säästöä ({todellinen_saasto:.0f} €/kk) asiakkaan tavoitteeseen. Onko tavoite realistinen?
+
         ## 2. Kulurakenteen analyysi
-        Analysoi listattuja kulueriä. Huomioi erityisesti suurin erä.
-        
+        - Analysoi listattuja kulueriä. Huomioi erityisesti suurin erä.
+        - Miten luvut skaalautuvat vuotasolle (12 kk)?
+
         ## 3. Strategiset suositukset
         - Anna 2-3 konkreettista parannusehdotusta.
         - **Kahvikuppi-indeksi**: Laske mitä tapahtuisi, jos {jaama:.0f} euron jäämästä säästettäisiin vielä 150 €/kk lisää 10 vuoden ajan (7% korolla).
-        
+
         ## 4. Checklist askeleille [ ]
-        Luo toimintasuunnitelma.
-        
+        - Luo selkeä, ruudutettava toimintasuunnitelma (esim. [ ] Tarkista vakuutukset).
+
         ## 5. Matemaattinen ennuste
-        Arvioi varallisuuden kehitystä perustuen {todellinen_saasto:.0f} €/kk säästöön ja nykyiseen {profiili['varallisuus']} € varallisuuteen.
-        
+        - Arvioi varallisuuden kehitystä perustuen {todellinen_saasto:.0f} €/kk säästöön ja nykyiseen {profiili['varallisuus']} € varallisuuteen.
+
         ## Arvosana (4-10)
-        Perustele lyhyesti.
+        - Anna perusteltu arvosana talouden nykyiselle hallinnalle.
         """
         response = model.generate_content(prompt)
         return response.text
@@ -194,6 +188,7 @@ def chat_with_data(df, user_question, history):
         return response.text
     except:
         return "Virhe yhteydessä."
+
 
 
 

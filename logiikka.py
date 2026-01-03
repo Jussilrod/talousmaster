@@ -120,6 +120,8 @@ def analysoi_talous(df_avg, profiili, data_tyyppi):
         menot = df_avg[df_avg['Kategoria']=='Meno']['Summa'].sum()
         jaama = tulot - menot
         
+        kk = df_alkuperainen['Kuukausi'].nunique()
+        
         sijoitukset_summa = 0
         sijoitus_keywords = ['sijoitus', 'rahasto', 'osake', 'säästö', 'nordnet', 'op-tuotto', 'ostot', 'etf']
         for _, row in df_avg[df_avg['Kategoria']=='Meno'].iterrows():
@@ -192,6 +194,7 @@ def chat_with_data(df, user_question, history):
         return response.text
     except:
         return "Virhe yhteydessä."
+
 
 
 

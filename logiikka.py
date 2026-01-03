@@ -137,44 +137,44 @@ def analysoi_talous(df_avg, profiili, data_tyyppi):
         model = genai.GenerativeModel('gemini-2.5-flash') # Päivitetty vakaampaan versioon
         
         prompt = f"""
-       ### ROLE
-Toimit kokeneena yksityispankkiirina (Senior Private Banker). Tyylisi on analyyttinen, tarkka ja asiantunteva, mutta samalla empaattinen ja kannustava. Puhetyylisi on ammattimainen suomi.
-
-### CONTEXT
-Analysoit asiakkaan taloutta pohjautuen Excel-dataan. 
-Asiakasprofiili:
-- Ikä: [ika] vuotta
-- Kotitalous: [suhde], lapsia [lapset]
-- Päätavoite: [tavoite]
-- Nettovarallisuus: [varallisuus] €
-
-Talousdata ([data_tyyppi]):
-- Aikajakso: [kk] kuukauden toteuma
-- Tulot: [tulot] €/kk
-- Menot: [menot] €/kk
-- Jäämä: [jaama] €/kk
-- Todellinen säästöaste (sis. sijoitukset): [todellinen_saasto] €/kk
-- Talouden tila: [status_txt]
-
-Suurimmat kuluerät:
-[kulut_txt]
-
-### TASK
-Luo kattava talousanalyysi seuraavalla rakenteella:
-
-1. **Tilannekuva**: Arvioi nykyhetkeä suhteessa asiakkaan tavoitteeseen ([tavoite]). Onko tavoite realistinen nykyisellä säästöasteella?
-2. **Kulujen rakenne**: Analysoi TOP 5 kuluja. Tee huomioita mahdollisista säästökohteista tai poikkeamista.
-3. **Toimenpidesuositukset**:
-    - Anna 3 konkreettista parannusehdotusta.
-    - **Kahvikuppi-indeksi**: Laske, kuinka paljon pieni, toistuva menoerä (esim. 5 €/pvä) kasvaisi 10 vuodessa 7 % korolla. Käytä tätä havainnollistamaan säästämisen voimaa.
-4. **Tehtävälista [ ]**: Luo 3-5 kohdan checklist, jonka asiakas voi toteuttaa heti.
-5. **Ennuste**: Arvioi varallisuuden kehitystä 5-10 vuoden säteellä perustuen nykyiseen säästöön ja nettovarallisuuteen.
-6. **Arvosana**: Anna talouden hoidolle arvosana (4-10) ja lyhyt perustelu.
-
-### CONSTRAINTS
-- Käytä Markdown-otsikoita (##).
-- Ole rehellinen: jos talous on alijäämäinen, sano se suoraan mutta ratkaisukeskeisesti.
-- Muotoile luvut selkeästi (esim. 1 250 €).
+        ### ROLE
+        Toimit kokeneena yksityispankkiirina (Senior Private Banker). Tyylisi on analyyttinen, tarkka ja asiantunteva, mutta samalla empaattinen ja kannustava. Puhetyylisi on ammattimainen suomi.
+        
+        ### CONTEXT
+        Analysoit asiakkaan taloutta pohjautuen Excel-dataan. 
+        Asiakasprofiili:
+        - Ikä: [ika] vuotta
+        - Kotitalous: [suhde], lapsia [lapset]
+        - Päätavoite: [tavoite]
+        - Nettovarallisuus: [varallisuus] €
+        
+        Talousdata ([data_tyyppi]):
+        - Aikajakso: [kk] kuukauden toteuma
+        - Tulot: [tulot] €/kk
+        - Menot: [menot] €/kk
+        - Jäämä: [jaama] €/kk
+        - Todellinen säästöaste (sis. sijoitukset): [todellinen_saasto] €/kk
+        - Talouden tila: [status_txt]
+        
+        Suurimmat kuluerät:
+        [kulut_txt]
+        
+        ### TASK
+        Luo kattava talousanalyysi seuraavalla rakenteella:
+        
+        1. **Tilannekuva**: Arvioi nykyhetkeä suhteessa asiakkaan tavoitteeseen ([tavoite]). Onko tavoite realistinen nykyisellä säästöasteella?
+        2. **Kulujen rakenne**: Analysoi TOP 5 kuluja. Tee huomioita mahdollisista säästökohteista tai poikkeamista.
+        3. **Toimenpidesuositukset**:
+            - Anna 3 konkreettista parannusehdotusta.
+            - **Kahvikuppi-indeksi**: Laske, kuinka paljon pieni, toistuva menoerä (esim. 5 €/pvä) kasvaisi 10 vuodessa 7 % korolla. Käytä tätä havainnollistamaan säästämisen voimaa.
+        4. **Tehtävälista [ ]**: Luo 3-5 kohdan checklist, jonka asiakas voi toteuttaa heti.
+        5. **Ennuste**: Arvioi varallisuuden kehitystä 5-10 vuoden säteellä perustuen nykyiseen säästöön ja nettovarallisuuteen.
+        6. **Arvosana**: Anna talouden hoidolle arvosana (4-10) ja lyhyt perustelu.
+        
+        ### CONSTRAINTS
+        - Käytä Markdown-otsikoita (##).
+        - Ole rehellinen: jos talous on alijäämäinen, sano se suoraan mutta ratkaisukeskeisesti.
+        - Muotoile luvut selkeästi (esim. 1 250 €).
         """
         response = model.generate_content(prompt)
         return response.text
@@ -190,6 +190,7 @@ def chat_with_data(df, user_question, history):
         return response.text
     except:
         return "Virhe yhteydessä."
+
 
 
 

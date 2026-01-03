@@ -114,7 +114,7 @@ def laske_tulevaisuus(aloitussumma, kk_saasto, korko_pros, vuodet):
             })
     return pd.DataFrame(data)
 
-def analysoi_talous(df_avg, profiili, data_tyyppi):
+def analysoi_talous(df_avg, profiili, data_tyyppi,kk_lkm):
     try:
         tulot = df_avg[df_avg['Kategoria']=='Tulo']['Summa'].sum()
         menot = df_avg[df_avg['Kategoria']=='Meno']['Summa'].sum()
@@ -194,6 +194,7 @@ def chat_with_data(df, user_question, history):
         return response.text
     except:
         return "Virhe yhteydessä."
+
 
 
 

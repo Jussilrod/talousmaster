@@ -61,20 +61,20 @@
 }
 
 /* --- NAVIGOINTI: RADIO -> TABS --- */
-/* Piilotetaan radion pallo ja muotoillaan säiliö */
+/* Muokattu vain tausta pois, muut pidetty ennallaan */
 div[data-testid="stRadio"] > div[role="radiogroup"] {
     display: flex;
     flex-direction: row;
     justify-content: center;
     gap: 15px;
-    background: rgba(255, 255, 255, 0.4);
+    background: transparent !important; /* POISTETTU TAUSTAVÄRI */
     padding: 10px;
     border-radius: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    backdrop-filter: blur(5px);
+    border: none !important;            /* POISTETTU REUNUS */
+    backdrop-filter: none !important;    /* POISTETTU SUMENNUS LOHKOSTA */
 }
 
-/* Yksittäisen valinnan (label) muotoilu */
+/* Yksittäisen valinnan (label) muotoilu - PIDETTY ENNALLAAN */
 div[data-testid="stRadio"] > div[role="radiogroup"] > label {
     background: transparent;
     padding: 10px 25px !important;
@@ -84,23 +84,23 @@ div[data-testid="stRadio"] > div[role="radiogroup"] > label {
     cursor: pointer;
 }
 
-/* Poistetaan oletuspallo näkyvistä */
+/* Poistetaan oletuspallo näkyvistä - PIDETTY ENNALLAAN */
 div[data-testid="stRadio"] div[data-testid="stMarkdownContainer"] p {
     font-weight: 600 !important;
     font-size: 1rem !important;
 }
 
-/* Piilotetaan varsinainen valintaympyrä */
+/* Piilotetaan varsinainen valintaympyrä - PIDETTY ENNALLAAN */
 div[data-testid="stRadio"] div[role="radiogroup"] label div[data-testid="stWidgetLabel"] {
     display: none;
 }
 
-/* Aktiivisen/Valitun elementin tyyli (Streamlit asettaa taustavärin automaattisesti labelille) */
+/* Aktiivisen/Valitun elementin tyyli - PIDETTY ENNALLAAN (sininen tausta hoverissa) */
 div[data-testid="stRadio"] > div[role="radiogroup"] > label:hover {
     background: rgba(37, 99, 235, 0.1) !important;
 }
 
-/* Poistetaan oletus pallon container */
+/* Poistetaan oletus pallon container - PIDETTY ENNALLAAN */
 div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child {
     display: none !important;
 }

@@ -71,7 +71,14 @@ if not uploaded_file:
         if os.path.exists("kuva.png"):
             st.image("kuva.png", use_container_width=True)
 else:
-    df_raw = logiikka.lue_kaksiosainen_excel(uploaded_file)
+    # KORJAUS: Estetään välilehtien hyppiminen tallentamalla data session_stateen
+    file_id = f"{uploaded_file.name}_{uploaded_file.size}"
+    if "df_raw" not in st.session_state or st.session_state.get("last_uploaded_file") != file_id:
+        st.session_state.df_raw = logiikka.lue_kaksiosainen_excel(uploaded_file)
+        st.session_state.last_uploaded_file = file_id
+    
+    df_raw = st.session_state.df_raw
+
     if not df_raw.empty:
         kk_nimet_map = {'kk_1': 'Tammi', 'kk_2': 'Helmi', 'kk_3': 'Maalis', 'kk_4': 'Huhti', 'kk_5': 'Touko', 'kk_6': 'Kesä', 'kk_7': 'Heinä', 'kk_8': 'Elo', 'kk_9': 'Syys', 'kk_10': 'Loka', 'kk_11': 'Marras', 'kk_12': 'Joulu'}
         df_raw['Kuukausi'] = df_raw['Kuukausi'].replace(kk_nimet_map)
@@ -84,13 +91,14 @@ else:
         menot_avg = df_avg[df_avg['Kategoria']=='Meno']['Summa'].sum()
         jaama_avg = tulot_avg - menot_avg
 
-       # KPI KORTIT
+        # KPI KORTIT
         c1, c2, c3, c4 = st.columns(4)
         m = [("Analysoitu", f"{kk_lkm} kk"), ("Tulot (kk)", logiikka.muotoile_suomi(tulot_avg)), ("Menot (kk)", logiikka.muotoile_suomi(menot_avg)), ("Jäämä (kk)", logiikka.muotoile_suomi(jaama_avg))]
         for i, col in enumerate([c1, c2, c3, c4]):
             col.markdown(f'<div class="kpi-card"><div class="kpi-label">{m[i][0]}</div><div class="kpi-value">{m[i][1]}</div></div>', unsafe_allow_html=True)
 
-        tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Yleiskuva", "📈 Trendit", "🔮 Simulaattori", "💬 Chat", "📝 Analyysi"], key="main_tabs")
+        # KORJAUS: Poistettu TypeErroria aiheuttanut 'key'-argumentti
+        tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Yleiskuva", "📈 Trendit", "🔮 Simulaattori", "💬 Chat", "📝 Analyysi"])
 
         with tab1:
             r1, r2 = st.columns(2)
@@ -185,4 +193,3 @@ else:
                     st.divider()
                     st.markdown(f'<div style="background-color: white; padding: 30px; border-radius: 12px; border: 1px solid #e2e8f0; color: black;">{res}</div>', unsafe_allow_html=True)
     else: st.error("Datan luku epäonnistui.")
-

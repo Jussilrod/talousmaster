@@ -142,7 +142,7 @@ else:
             st.subheader("🔮 Miljonääri-simulaattori")
             c_sim1, c_sim2 = st.columns([1,2])
             with c_sim1:
-                kk_saasto = st.slider("Kuukausisäästö (€)", 0.0, 300.0, float(max(jaama_avg, 50.0)), step=10.0)
+                kk_saasto = st.slider("Kuukausisäästö (€)", 0.0, 500.0, float(max(jaama_avg, 50.0)), step=10.0)
                 vuodet = st.slider("Sijoitusaika (v)", 1, 40, 20)
                 korko = st.slider("Tuotto %", 1.0, 15.0, 7.0)
                 alkupotti = st.number_input("Alkupääoma (€)", 0, 1000000, 0, step=1000)
@@ -195,3 +195,4 @@ else:
                     st.divider()
                     st.markdown(f'<div style="background-color: white; padding: 30px; border-radius: 12px; border: 1px solid #e2e8f0; color: black;">{res}</div>', unsafe_allow_html=True)
     else: st.error("Datan luku epäonnistui.")
+

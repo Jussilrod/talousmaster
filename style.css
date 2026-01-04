@@ -37,70 +37,56 @@
     border-radius: 16px;
     padding: 20px;
     border: 1px solid rgba(255, 255, 255, 0.3);
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
     text-align: center;
     transition: transform 0.3s ease;
 }
 
-.kpi-card:hover {
-    transform: translateY(-5px);
-    border: 1px solid rgba(37, 99, 235, 0.4);
-}
+/* --- NAVIGOINTI: ULKOASUN HIOMINEN --- */
 
-.kpi-label {
-    font-size: 0.85rem;
-    color: #64748b;
-    font-weight: 600;
-    text-transform: uppercase;
-}
-
-.kpi-value {
-    font-size: 1.8rem;
-    font-weight: 800;
-    color: #0f172a;
-}
-
-/* --- NAVIGOINTI: RADIO -> TABS --- */
-/* Piilotetaan radion pallo ja muotoillaan säiliö */
+/* 1. Poistetaan taustablokki radioryhmän ympäriltä */
 div[data-testid="stRadio"] > div[role="radiogroup"] {
-    display: flex;
-    flex-direction: row;
+    background-color: transparent !important;
+    border: none !important;
+    gap: 10px;
     justify-content: center;
-    gap: 15px;
-    background: rgba(255, 255, 255, 0.4);
-    padding: 10px;
-    border-radius: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    backdrop-filter: blur(5px);
+    padding: 0px;
 }
 
-/* Yksittäisen valinnan (label) muotoilu */
+/* 2. Muotoillaan yksittäiset "välilehdet" */
 div[data-testid="stRadio"] > div[role="radiogroup"] > label {
-    background: transparent;
-    padding: 10px 25px !important;
-    border-radius: 12px !important;
-    border: 1px solid transparent !important;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    cursor: pointer;
+    background-color: rgba(255, 255, 255, 0.4) !important; /* Erittäin kevyt valkoinen */
+    border: 1px solid rgba(37, 99, 235, 0.1) !important;
+    padding: 8px 20px !important;
+    border-radius: 50px !important; /* Pyöreät pillerit */
+    transition: all 0.2s ease-in-out;
 }
 
-/* Poistetaan oletuspallo näkyvistä */
-div[data-testid="stRadio"] div[data-testid="stMarkdownContainer"] p {
-    font-weight: 600 !important;
-    font-size: 1rem !important;
-}
-
-/* Piilotetaan varsinainen valintaympyrä */
-div[data-testid="stRadio"] div[role="radiogroup"] label div[data-testid="stWidgetLabel"] {
-    display: none;
-}
-
-/* Aktiivisen/Valitun elementin tyyli (Streamlit asettaa taustavärin automaattisesti labelille) */
+/* 3. Tyyli, kun hiiri on painikkeen päällä */
 div[data-testid="stRadio"] > div[role="radiogroup"] > label:hover {
-    background: rgba(37, 99, 235, 0.1) !important;
+    border: 1px solid #2563eb !important;
+    background-color: rgba(255, 255, 255, 0.8) !important;
 }
 
-/* Poistetaan oletus pallon container */
+/* 4. Korostetaan valittua välilehteä (Streamlitin aktiivinen tila) */
+div[data-testid="stRadio"] > div[role="radiogroup"] > label[data-baseweb="radio"] {
+    /* Tämä kohdistuu Streamlitin sisäiseen rakenteeseen */
+}
+
+/* 5. Piilotetaan radion pallo ja säädetään tekstiä */
 div[data-testid="stRadio"] div[role="radiogroup"] label > div:first-child {
-    display: none !important;
+    display: none !important; /* Piilottaa pallon */
+}
+
+div[data-testid="stRadio"] div[data-testid="stMarkdownContainer"] p {
+    font-weight: 500 !important;
+    color: #1e293b !important;
+    margin: 0px !important;
+}
+
+/* 6. Lisätään pieni varjo valitulle (Streamlit vaihtaa taustan automaattisesti) */
+div[data-testid="stRadio"] label[aria-checked="true"] {
+    background-color: #ffffff !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15) !important;
+    border: 1px solid #2563eb !important;
 }

@@ -10,8 +10,9 @@ st.set_page_config(page_title="TaskuEkonomisti 2.0", page_icon="💎", layout="w
 
 if "messages" not in st.session_state: st.session_state.messages = []
 if "varallisuus_tavoite" not in st.session_state: st.session_state.varallisuus_tavoite = 10000.0
+if "analyysi_kaynnissa" not in st.session_state: st.session_state.analyysi_kaynnissa = False
 
-# Alustetaan manuaalinen data session_stateen, jos sitä ei ole
+# Alustetaan manuaalinen data session_stateen
 if "manual_df" not in st.session_state:
     st.session_state.manual_df = pd.DataFrame(
         columns=["Kategoria", "Selite", "Summa", "Kuukausi"],
@@ -43,7 +44,9 @@ with st.sidebar:
     uploaded_file = st.file_uploader("📂 Lataa täytetty Excel", type=['xlsx'])
     
     if uploaded_file:
+        st.session_state.analyysi_kaynnissa = True # Tiedoston lataus aktivoi analyysin
         if st.button("🗑️ Tyhjennä tiedosto"):
+            st.session_state.analyysi_kaynnissa = False
             st.rerun()
 
     st.markdown("---")
@@ -58,9 +61,6 @@ with st.sidebar:
         **3. Tietojen minimointi:** AI näkee vain luvut ja selitteet.
         """, unsafe_allow_html=True)
 
-    st.markdown("---")
-    st.caption("Vinkki: Voit joko ladata Excelin tai syöttää tiedot suoraan etusivulla.")
-
 # --- OTSIKKO ---
 st.markdown("""
 <div style="text-align: center; margin-top: 10px; margin-bottom: 30px;">
@@ -69,64 +69,48 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# --- DATAN LATAUS / SYÖTTÖ ---
+# --- DATAN HALLINTA ---
 df_raw = pd.DataFrame()
 
 if uploaded_file:
-    # Käytetään Exceliä
     file_id = f"{uploaded_file.name}_{uploaded_file.size}"
     if "df_raw" not in st.session_state or st.session_state.get("last_file") != file_id:
         st.session_state.df_raw = logiikka.lue_kaksiosainen_excel(uploaded_file)
         st.session_state.last_file = file_id
     df_raw = st.session_state.df_raw
 else:
-    # Näytetään manuaalinen syöttö etusivulla
-    col_a, col_b, col_c = st.columns([1, 4, 1])
-    with col_b:
-        st.markdown("""
-        <div style="text-align: center; background-color: #f8fafc; padding: 20px; border-radius: 10px; border: 1px solid #e2e8f0; margin-bottom: 20px;">
-            <h3>👋 Tervetuloa!</h3>
-            <p>Lataa Excel-tiedosto sivupalkista tai <b>syötä tiedot suoraan alla olevaan taulukkoon</b> aloittaaksesi analyysin.</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.subheader("📝 Syötä tulot ja menot")
-        # Luodaan interaktiivinen taulukko
-        edited_df = st.data_editor(
-            st.session_state.manual_df,
-            num_rows="dynamic",
-            column_config={
-                "Kategoria": st.column_config.SelectboxColumn(
-                    "Kategoria",
-                    options=["Tulo", "Meno"],
-                    required=True,
-                ),
-                "Summa": st.column_config.NumberColumn(
-                    "Summa (€)",
-                    min_value=0,
-                    format="%.2f €",
-                    required=True,
-                ),
-                "Kuukausi": st.column_config.SelectboxColumn(
-                    "Kuukausi",
-                    options=['Tammi', 'Helmi', 'Maalis', 'Huhti', 'Touko', 'Kesä', 'Heinä', 'Elo', 'Syys', 'Loka', 'Marras', 'Joulu'],
-                    required=True,
-                )
-            },
-            use_container_width=True,
-            key="data_editor_input"
-        )
-        
-        if st.button("🚀 Analysoi syötetyt tiedot", type="primary", use_container_width=True):
-            st.session_state.manual_df = edited_df
-            df_raw = edited_df
-            st.info("Käytetään manuaalisesti syötettyjä tietoja.")
-        else:
-            # Jos nappia ei painettu, pidetään df_raw tyhjänä jotta ei näytetä visualisointeja ennen aikojaan
-            df_raw = pd.DataFrame()
+    # MANUAALINEN SYÖTTÖ ETUSIVULLA
+    if not st.session_state.analyysi_kaynnissa:
+        col_a, col_b, col_c = st.columns([1, 4, 1])
+        with col_b:
+            st.markdown("""
+            <div style="text-align: center; background-color: #f8fafc; padding: 20px; border-radius: 10px; border: 1px solid #e2e8f0; margin-bottom: 20px;">
+                <h3>👋 Tervetuloa!</h3>
+                <p>Syötä tiedot alle tai lataa Excel sivupalkista.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            edited_df = st.data_editor(
+                st.session_state.manual_df,
+                num_rows="dynamic",
+                use_container_width=True,
+                key="editor"
+            )
+            
+            if st.button("🚀 Analysoi syötetyt tiedot", type="primary", use_container_width=True):
+                st.session_state.manual_df = edited_df
+                st.session_state.analyysi_kaynnissa = True
+                st.rerun()
+    else:
+        # Jos analyysi on päällä, käytetään tallennettua manuaalista dataa
+        df_raw = st.session_state.manual_df
+        if st.button("⬅️ Muokkaa tietoja"):
+            st.session_state.analyysi_kaynnissa = False
+            st.rerun()
 
-# --- VISUALISOINTI (Jos dataa on) ---
-if not df_raw.empty:
+# --- VISUALISOINTI ---
+if st.session_state.analyysi_kaynnissa and not df_raw.empty:
+    # Varmistetaan kk-nimet
     kk_nimet_map = {'kk_1': 'Tammi', 'kk_2': 'Helmi', 'kk_3': 'Maalis', 'kk_4': 'Huhti', 'kk_5': 'Touko', 'kk_6': 'Kesä', 'kk_7': 'Heinä', 'kk_8': 'Elo', 'kk_9': 'Syys', 'kk_10': 'Loka', 'kk_11': 'Marras', 'kk_12': 'Joulu'}
     df_raw['Kuukausi'] = df_raw['Kuukausi'].replace(kk_nimet_map)
     oikea_jarjestys = ['Tammi', 'Helmi', 'Maalis', 'Huhti', 'Touko', 'Kesä', 'Heinä', 'Elo', 'Syys', 'Loka', 'Marras', 'Joulu']
@@ -144,9 +128,9 @@ if not df_raw.empty:
     for i, col in enumerate([c1, c2, c3, c4]):
         col.markdown(f'<div class="kpi-card"><div class="kpi-label">{m[i][0]}</div><div class="kpi-value">{m[i][1]}</div></div>', unsafe_allow_html=True)
 
-    # Vakaa navigointi radion avulla
+    # Vakaa navigointi
     tabs_list = ["📊 Yleiskuva", "📈 Trendit", "🔮 Simulaattori", "💬 Chat", "📝 Analyysi"]
-    active_tab = st.radio("Navigointi", tabs_list, horizontal=True, label_visibility="collapsed", key="navigation_radio")
+    active_tab = st.radio("Nav", tabs_list, horizontal=True, label_visibility="collapsed", key="nav")
     st.markdown("<br>", unsafe_allow_html=True)
 
     if active_tab == "📊 Yleiskuva":
@@ -203,22 +187,17 @@ if not df_raw.empty:
     elif active_tab == "💬 Chat":
         st.subheader("💬 Kysy taloudestasi")
         chat_cont = st.container()
-        p_input = None
-        p1, p2, p3 = st.columns(3)
-        if p1.button("📊 Kuluanalyysi"): p_input = "Analysoi kulujani."
-        if p2.button("🔮 Simuloi +50€"): p_input = "Miten 50€ lisäsäästö vaikuttaa?"
-        if p3.button("📝 Säästösuunnitelma"): p_input = "Luo säästösuunnitelma."
-        with chat_cont:
-            for msg in st.session_state.messages:
-                with st.chat_message(msg["role"]): st.markdown(msg["content"])
-        chat_in = st.chat_input("Kirjoita kysymys...")
-        actual_input = chat_in or p_input
-        if actual_input:
-            st.session_state.messages.append({"role": "user", "content": actual_input})
+        for msg in st.session_state.messages:
             with chat_cont:
-                with st.chat_message("user"): st.markdown(actual_input)
+                with st.chat_message(msg["role"]): st.markdown(msg["content"])
+        
+        chat_in = st.chat_input("Kirjoita kysymys...")
+        if chat_in:
+            st.session_state.messages.append({"role": "user", "content": chat_in})
+            with chat_cont:
+                with st.chat_message("user"): st.markdown(chat_in)
                 with st.chat_message("assistant"):
-                    resp = logiikka.chat_with_data(df_raw, actual_input, st.session_state.messages)
+                    resp = logiikka.chat_with_data(df_raw, chat_in, st.session_state.messages)
                     st.markdown(resp)
                     st.session_state.messages.append({"role": "assistant", "content": resp})
 

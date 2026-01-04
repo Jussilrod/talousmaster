@@ -84,13 +84,13 @@ else:
         menot_avg = df_avg[df_avg['Kategoria']=='Meno']['Summa'].sum()
         jaama_avg = tulot_avg - menot_avg
 
-        # KPI KORTIT
+       # KPI KORTIT
         c1, c2, c3, c4 = st.columns(4)
         m = [("Analysoitu", f"{kk_lkm} kk"), ("Tulot (kk)", logiikka.muotoile_suomi(tulot_avg)), ("Menot (kk)", logiikka.muotoile_suomi(menot_avg)), ("Jäämä (kk)", logiikka.muotoile_suomi(jaama_avg))]
         for i, col in enumerate([c1, c2, c3, c4]):
             col.markdown(f'<div class="kpi-card"><div class="kpi-label">{m[i][0]}</div><div class="kpi-value">{m[i][1]}</div></div>', unsafe_allow_html=True)
 
-        tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Yleiskuva", "📈 Trendit", "🔮 Simulaattori", "💬 Chat", "📝 Analyysi"])
+        tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Yleiskuva", "📈 Trendit", "🔮 Simulaattori", "💬 Chat", "📝 Analyysi"], key="main_tabs")
 
         with tab1:
             r1, r2 = st.columns(2)
@@ -185,3 +185,4 @@ else:
                     st.divider()
                     st.markdown(f'<div style="background-color: white; padding: 30px; border-radius: 12px; border: 1px solid #e2e8f0; color: black;">{res}</div>', unsafe_allow_html=True)
     else: st.error("Datan luku epäonnistui.")
+

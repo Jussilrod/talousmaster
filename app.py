@@ -71,11 +71,11 @@ if not uploaded_file:
         if os.path.exists("kuva.png"):
             st.image("kuva.png", use_container_width=True)
 else:
-    # KORJAUS: Estetään välilehtien hyppiminen tallentamalla data session_stateen
+    # LUKITAAN DATA SESSION STATEEN VAKAUDEN VARMISTAMISEKSI
     file_id = f"{uploaded_file.name}_{uploaded_file.size}"
-    if "df_raw" not in st.session_state or st.session_state.get("last_uploaded_file") != file_id:
+    if "df_raw" not in st.session_state or st.session_state.get("last_file") != file_id:
         st.session_state.df_raw = logiikka.lue_kaksiosainen_excel(uploaded_file)
-        st.session_state.last_uploaded_file = file_id
+        st.session_state.last_file = file_id
     
     df_raw = st.session_state.df_raw
 
@@ -97,10 +97,12 @@ else:
         for i, col in enumerate([c1, c2, c3, c4]):
             col.markdown(f'<div class="kpi-card"><div class="kpi-label">{m[i][0]}</div><div class="kpi-value">{m[i][1]}</div></div>', unsafe_allow_html=True)
 
-        # KORJAUS: Poistettu TypeErroria aiheuttanut 'key'-argumentti
-        tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Yleiskuva", "📈 Trendit", "🔮 Simulaattori", "💬 Chat", "📝 Analyysi"])
+        # KORJAUS: Vakaa navigointi radion avulla (korvaa st.tabs)
+        tabs = ["📊 Yleiskuva", "📈 Trendit", "🔮 Simulaattori", "💬 Chat", "📝 Analyysi"]
+        active_tab = st.radio("Navigointi", tabs, horizontal=True, label_visibility="collapsed", key="navigation_radio")
+        st.markdown("<br>", unsafe_allow_html=True)
 
-        with tab1:
+        if active_tab == "📊 Yleiskuva":
             r1, r2 = st.columns(2)
             with r1:
                 st.subheader("Menojen rakenne")
@@ -121,7 +123,7 @@ else:
             fig_water = go.Figure(go.Waterfall(orientation="v", measure=measure, x=labels, y=values, connector={"line":{"color":"#cbd5e1"}}, decreasing={"marker":{"color": "#fca5a5"}}, increasing={"marker":{"color": "#86efac"}}, totals={"marker":{"color": logiikka.PASTEL_COLORS[0]}}))
             st.plotly_chart(fig_water, use_container_width=True)
 
-        with tab2:
+        elif active_tab == "📈 Trendit":
             st.subheader("Rahan virtausanalyysi")
             st.plotly_chart(logiikka.luo_sankey(tulot_avg, df_avg[df_avg['Kategoria']=='Meno'], jaama_avg), use_container_width=True)           
             st.divider()
@@ -136,7 +138,7 @@ else:
                 st.plotly_chart(fig_trend, use_container_width=True)
             else: st.warning("Trendit vaativat dataa useammalta kuukaudelta.")
 
-        with tab3:
+        elif active_tab == "🔮 Simulaattori":
             st.subheader("🔮 Miljonääri-simulaattori")
             c_sim1, c_sim2 = st.columns([1,2])
             with c_sim1:
@@ -151,7 +153,7 @@ else:
                 fig_area = px.area(df_sim, x="Vuosi", y=["Oma pääoma", "Tuotto"], color_discrete_sequence=[logiikka.PASTEL_COLORS[5], logiikka.PASTEL_COLORS[4]])
                 st.plotly_chart(fig_area, use_container_width=True)
 
-        with tab4:
+        elif active_tab == "💬 Chat":
             st.subheader("💬 Kysy taloudestasi")
             chat_cont = st.container()
             p_input = None
@@ -173,7 +175,7 @@ else:
                         st.markdown(resp)
                         st.session_state.messages.append({"role": "assistant", "content": resp})
 
-        with tab5:
+        elif active_tab == "📝 Analyysi":
             with st.form("analyysi_form"):
                 st.markdown("### 📝 Varainhoitajan analyysi")
                 data_tyyppi = st.radio("Datan tyyppi", ["Toteuma", "Budjetti"], horizontal=True)
